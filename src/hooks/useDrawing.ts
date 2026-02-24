@@ -19,6 +19,32 @@ function getSvgPathFromStroke(stroke: number[][]): string {
   return d.join(' ')
 }
 
+function drawDot(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+  tool: Extract<DrawTool, 'pencil' | 'brush' | 'highlighter' | 'eraser'>
+) {
+  ctx.save()
+  if (tool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out'
+    ctx.fillStyle = 'rgba(0,0,0,1)'
+  } else if (tool === 'highlighter') {
+    ctx.globalCompositeOperation = 'multiply'
+    ctx.fillStyle = color
+    ctx.globalAlpha = 0.35
+  } else {
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.fillStyle = color
+  }
+  ctx.beginPath()
+  ctx.arc(x, y, size / 2, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
 function drawStrokeToCtx(
   ctx: CanvasRenderingContext2D,
   points: StrokePoint[],
@@ -27,6 +53,10 @@ function drawStrokeToCtx(
   size: number,
   opacity: number
 ) {
+  if (points.length === 1) {
+    drawDot(ctx, points[0].x, points[0].y, size, color, tool)
+    return
+  }
   if (points.length < 2) return
 
   const opts = {
@@ -68,6 +98,7 @@ export function useDrawing(
   const currentPointsRef = useRef<StrokePoint[]>([])
   const completedStrokesRef = useRef<CompletedStroke[]>([])
   const animFrameRef = useRef<number | null>(null)
+  const selectedStrokeIdRef = useRef<string | null>(null)
 
   const redrawAll = useCallback(
     (
@@ -87,7 +118,9 @@ export function useDrawing(
         drawStrokeToCtx(ctx, stroke.points, stroke.tool, stroke.color, stroke.size, stroke.opacity)
       }
 
-      if (livePoints && livePoints.length > 1 && liveTool && liveColor) {
+      if (livePoints && livePoints.length === 1 && liveTool && liveColor) {
+        drawDot(ctx, livePoints[0].x, livePoints[0].y, liveSize ?? 6, liveColor, liveTool)
+      } else if (livePoints && livePoints.length > 1 && liveTool && liveColor) {
         drawStrokeToCtx(ctx, livePoints, liveTool, liveColor, liveSize ?? 6, liveOpacity ?? 1)
       }
     },
@@ -160,7 +193,7 @@ export function useDrawing(
         animFrameRef.current = null
       }
 
-      if (currentPointsRef.current.length > 1) {
+      if (currentPointsRef.current.length >= 1) {
         completedStrokesRef.current.push({
           id: crypto.randomUUID(),
           points: [...currentPointsRef.current],
@@ -173,7 +206,6 @@ export function useDrawing(
 
       currentPointsRef.current = []
 
-      // Final redraw
       const canvas = canvasRef.current
       if (!canvas) return
       const ctx = canvas.getContext('2d')
@@ -183,9 +215,68 @@ export function useDrawing(
     [canvasRef, redrawAll]
   )
 
+  const cancelCurrentStroke = useCallback(() => {
+    isDrawingRef.current = false
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
+    }
+    currentPointsRef.current = []
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (ctx) redrawAll(ctx, completedStrokesRef.current)
+  }, [canvasRef, redrawAll])
+
+  const selectStrokeAtPoint = useCallback(
+    (x: number, y: number): string | null => {
+      const canvas = canvasRef.current
+      if (!canvas) return null
+
+      const strokes = completedStrokesRef.current
+      for (let i = strokes.length - 1; i >= 0; i--) {
+        const stroke = strokes[i]
+        if (stroke.tool === 'eraser') continue
+
+        const offscreen = document.createElement('canvas')
+        offscreen.width = canvas.width
+        offscreen.height = canvas.height
+        const offCtx = offscreen.getContext('2d')
+        if (!offCtx) continue
+
+        drawStrokeToCtx(offCtx, stroke.points, stroke.tool, '#ffffff', stroke.size, 1)
+
+        const px = Math.round(x)
+        const py = Math.round(y)
+        if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) continue
+
+        const pixel = offCtx.getImageData(px, py, 1, 1).data
+        if (pixel[3] > 0) {
+          selectedStrokeIdRef.current = stroke.id
+          return stroke.id
+        }
+      }
+      selectedStrokeIdRef.current = null
+      return null
+    },
+    [canvasRef]
+  )
+
+  const deleteSelectedStroke = useCallback(() => {
+    const id = selectedStrokeIdRef.current
+    if (!id) return
+    completedStrokesRef.current = completedStrokesRef.current.filter((s) => s.id !== id)
+    selectedStrokeIdRef.current = null
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (ctx) redrawAll(ctx, completedStrokesRef.current)
+  }, [canvasRef, redrawAll])
+
   const clearCanvas = useCallback(() => {
     completedStrokesRef.current = []
     currentPointsRef.current = []
+    selectedStrokeIdRef.current = null
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -194,6 +285,7 @@ export function useDrawing(
 
   const undoLast = useCallback(() => {
     completedStrokesRef.current.pop()
+    selectedStrokeIdRef.current = null
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -204,8 +296,12 @@ export function useDrawing(
     startStroke,
     continueStroke,
     endStroke,
+    cancelCurrentStroke,
     clearCanvas,
     undoLast,
     isDrawing: isDrawingRef,
+    selectStrokeAtPoint,
+    deleteSelectedStroke,
+    selectedStrokeId: selectedStrokeIdRef,
   }
 }

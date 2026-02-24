@@ -141,6 +141,19 @@ body {
   background-size: 24px 24px;
 }
 
+.canvas-grid-light {
+  background-color: #f5f5f0;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ─── CTA slide-up for welcome panel ───────────────────── */
+.panel-slide-up {
+  animation: slide-up-fade 500ms ease-out forwards;
+}
+
 /* ─── Toolbar Frosted Glass ─────────────────────────────── */
 .toolbar-glass {
   background: rgba(13, 13, 26, 0.92);

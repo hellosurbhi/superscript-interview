@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## feat: redesign as SurbhiDraw — left sidebar, click-anywhere landing, component-level eraser
+**Date:** 2026-02-24
+
+### What changed and why
+
+Rebranded and redesigned the full UX per product spec. Key changes:
+
+**Landing page (`/`)**
+- Animation canvas now confined to a centered `60% × 60%` box with ~20% dark space on each side, giving the Minecraft animation a "stage" rather than filling the whole screen
+- Full outer wrapper is `onClick={handleEnter}` — clicking anywhere (including dark margins) navigates to `/draw` with zero friction
+- "SUPRSCRIPT" → "SURBHIDRAW" branding in the typed logo animation
+- Feature list updated: `DRAW  SKETCH  WIREFRAME` / `PENCIL  ERASE  ANIMATE` / `FLUID DRAWING  MOBILE`
+- Welcome text overlay (bottom-right) shows after animation completes: "Welcome to SurbhiDraw!", description, and "▶ CLICK ANYWHERE TO BEGIN"
+
+**Drawing tool (`/draw`)**
+- **Left sidebar** (`LeftToolbar.tsx` — new file): Replaces the 11-tool bottom dock with a minimal vertical sidebar (3 tools: Pencil, Eraser, Animate placeholder). Animate is visually dimmed with "SOON" label.
+- **Vertical thickness slider**: Appears below Pencil button when active. Uses CSS `transform: rotate(-90deg)` for cross-browser vertical range input.
+- **Immediate drawing feedback** (`useDrawing.ts`): Drawing now responds on `pointerDown` with an immediate dot. Previously `perfect-freehand` required 2+ points before rendering; now single-point taps render a circle at the click position immediately.
+- **Component-level eraser**: Eraser now distinguishes between drag (paint-erase) and click (select component). Clicking with eraser selects the topmost stroke at that point using offscreen canvas pixel hit-testing. "PRESS DELETE TO REMOVE" hint appears. `Delete`/`Backspace` removes the entire selected stroke.
+- **Light canvas background**: Drawing surface is now warm off-white `#f5f5f0` with subtle light grid lines — feels like paper rather than a dark terminal.
+- Removed shape tools (EaselJS shapes, select tool, shape preview canvas) from the simplified UI.
+
+**CSS (`globals.css`)**
+- Added `.canvas-grid-light` for the light-background drawing canvas
+- Added `.panel-slide-up` utility class (reuses `slide-up-fade` keyframe)
+
+### Files modified
+- `src/types/drawing.ts` — Added `'animate'` to `DrawTool` union
+- `src/hooks/useDrawing.ts` — `drawDot` helper, single-point stroke fix, `cancelCurrentStroke`, `selectStrokeAtPoint`, `deleteSelectedStroke`
+- `src/components/canvas/DrawingCanvas.tsx` — Full rewrite: LeftToolbar, light canvas, eraser click/drag distinction, Delete key handler, removed EaselJS layers
+- `src/components/welcome/WelcomeCanvas.tsx` — Full rewrite: confined canvas box, full-page click, SurbhiDraw branding, updated feature list, CTA overlay
+- `src/app/globals.css` — Added `.canvas-grid-light`, `.panel-slide-up`
+
+### Files created
+- `src/components/canvas/LeftToolbar.tsx` — Vertical 3-tool sidebar with vertical thickness slider
+
+### Trade-offs
+- Removed EaselJS shape tools from the UI (code still present in old hooks) to focus on the core pencil/erase/animate flow. Can be reintroduced as a 4th "Shapes" tool later.
+- `selectStrokeAtPoint` uses offscreen canvas pixel sampling — O(n) strokes per click. Fast enough in practice since it's not on every pointer event.
+- Eraser `ERASER_MOVE_THRESHOLD = 5px` distinguishes tap from drag. Touch devices naturally have ~2-3px jitter; 5px provides comfortable headroom.
+
+---
+
 ## feat: build SuprScript art tool with Minecraft welcome animation + drawing canvas
 **Date:** 2026-02-24
 

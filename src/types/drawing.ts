@@ -10,6 +10,7 @@ export type DrawTool =
   | 'line'
   | 'arrow'
   | 'triangle'
+  | 'animate'
 
 export type ShapeType = 'rect' | 'circle' | 'ellipse' | 'line' | 'arrow' | 'triangle'
 
