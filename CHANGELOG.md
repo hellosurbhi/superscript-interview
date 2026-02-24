@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## feat: keyboard shortcuts overlay — ?, sidebar button, Escape to close
+**Date:** 2026-02-24
+**Commit:** fc0bf40
+
+### What changed
+
+**`ShortcutsOverlay.tsx`** (new) — Fixed `z-[200]` overlay with dark `#0d0d1a` card, `border-[#00f5ff]/15`, backdrop blur. Lists 10 shortcuts in two-column rows: `<kbd>` pill (pixel font, subtle border) on the left, faint description on the right. Meta entries (`?`, `Esc`) are dimmed to distinguish them from action shortcuts. Footer says "? or ESC to close". Closes on `Escape`, `?`, or click-outside the card.
+
+**`LeftToolbar.tsx`** — Added `onShowShortcuts` prop. Wired `?` key into existing keyboard `useEffect` (also added `A` → animate tool which was missing). Added `?` button at the very bottom of the sidebar — 40×40, extra-subtle `text-white/25` resting state, cyan on hover, tooltip "Shortcuts · ?".
+
+**`DrawingCanvas.tsx`** — Added `showShortcuts` state, imported `ShortcutsOverlay`, renders it when true. Passes `onShowShortcuts={() => setShowShortcuts(true)}` to LeftToolbar. Expanded the Delete-key `useEffect` to also handle `Escape`: closes shortcuts overlay and deselects any selected stroke.
+
+### Files affected
+- `src/components/canvas/ShortcutsOverlay.tsx` — CREATE
+- `src/components/canvas/LeftToolbar.tsx` — add prop + `?` key + button + `A` key fix
+- `src/components/canvas/DrawingCanvas.tsx` — state, import, render, Escape handler
+
 ## feat: Supabase sharing — share_token, modal, /share route, animation persistence
 **Date:** 2026-02-24
 **Commit:** 99bb07f
