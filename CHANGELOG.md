@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## feat: add /session build log viewer page
+**Date:** 2026-02-24
+**Commit:** d97c5db
+
+### What changed
+New `/session` route that displays the full Claude Code session transcript as an interactive log viewer. Interviewers can drop `public/session.txt` (the raw Claude Code session output) and visit `/session` to browse the entire build session.
+
+### Files affected
+- `src/app/session/page.tsx` — new client component (full viewer)
+- `src/components/welcome/WelcomeCanvas.tsx` — added "view build log →" link
+
+### session/page.tsx details
+
+**Parsing:** Scans `session.txt` line by line. Lines starting with `❯` are turn boundaries — their text becomes the card title. All subsequent lines (including `⏺` Claude response lines) up to the next `❯` are the card body.
+
+**Viewer features:**
+- Sticky controls bar: live turn count, search input, Expand All / Collapse All
+- Cards default to collapsed; click header to expand/collapse
+- Cards with >50 body lines show truncated content + "show more / show less" toggle
+- Search filters turns in real time and highlights matches in yellow (`#facc15`)
+- When search is active, matching turns auto-expand
+- `` ``` `` code fences → `<pre>` block with `#111` bg and pink left border
+- Lines starting with `+` → green (#4ade80); lines starting with `-` → red (#f87171); excludes `---`, `-->`, `+++`
+- `⏺` markers stripped from display; a subtle `⏺` glyph shown as a Claude block separator
+- Loading / error (file not found) / empty parse states all handled
+- Dark theme: `#0a0a0a` bg, `#ff006e` accent, `#ededed` text, `font-pixel` headers, Geist Mono body
+- Scrolling fix: `position:fixed; inset:0; overflow-y:auto` on `<main>` bypasses global `body { overflow:hidden }`
+
+**Decisions:**
+- No syntax highlighting library (Prism etc.) — kept it simple with just dark bg monospace code blocks. Adds no bundle weight.
+- `'use client'` required because fetch + multiple useState/useMemo needed
+- Auto-expand on search: UX is better than forcing manual expand when filtering
+
+### WelcomeCanvas change
+Added a third stacked link `view build log →` to `/session` below the existing `what's next →` link. `e.stopPropagation()` prevents the welcome-dismiss handler from firing on click.
+
+---
+
 ## feat: add /enhancements page and landing link
 **Date:** 2026-02-24
 **Commit:** 3114dd8
