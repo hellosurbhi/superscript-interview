@@ -490,6 +490,13 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
         >
           what&apos;s next →
         </a>
+        <a
+          href="/session"
+          onClick={(e) => e.stopPropagation()}
+          className="text-[#c2185b]/30 hover:text-[#ff006e]/70 transition-colors"
+        >
+          view build log →
+        </a>
       </div>
     </div>
   )
