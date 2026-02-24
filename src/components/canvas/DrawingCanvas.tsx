@@ -252,31 +252,28 @@ export default function DrawingCanvas() {
     }
   }, [transform])
 
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      e.preventDefault()
-      if (e.touches.length === 2 && pinchRef.current) {
-        const t0 = e.touches[0]
-        const t1 = e.touches[1]
-        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
-        const scaleDelta = dist / pinchRef.current.dist
-        setTransform((prev) => ({
-          ...prev,
-          scale: Math.max(0.3, Math.min(5, prev.scale * scaleDelta)),
-        }))
-        pinchRef.current.dist = dist
-      }
-    },
-    []
-  )
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault()
+    if (e.touches.length === 2 && pinchRef.current) {
+      const t0 = e.touches[0]
+      const t1 = e.touches[1]
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+      const scaleDelta = dist / pinchRef.current.dist
+      setTransform((prev) => ({
+        ...prev,
+        scale: Math.max(0.3, Math.min(5, prev.scale * scaleDelta)),
+      }))
+      pinchRef.current.dist = dist
+    }
+  }
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = () => {
     pinchRef.current = null
     panRef.current = null
-  }, [])
+  }
 
   // Scroll-to-pan on desktop
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
     if (e.ctrlKey || e.metaKey) {
       const scaleDelta = e.deltaY > 0 ? 0.9 : 1.1
@@ -291,7 +288,7 @@ export default function DrawingCanvas() {
         translateY: prev.translateY - e.deltaY,
       }))
     }
-  }, [])
+  }
 
   const handleClear = useCallback(() => {
     drawing.clearCanvas()
