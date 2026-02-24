@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## feat: add AI animation feature — prompt-to-canvas animation via Claude
+**Date:** 2026-02-24
+**Commit:** 0e2f3b1
+
+### What changed
+Unlocked the ⚡ Animate button in the left sidebar. Users can now type a natural-language prompt describing how they want their drawing to animate. Claude generates a looping Canvas 2D animation script that plays over the original drawing.
+
+### Interaction flow
+1. Click ⚡ in sidebar → bottom sheet slides up with prompt textarea
+2. Type prompt + hit Generate (or Enter) → pixel-block loader appears
+3. Claude returns JS animation code → plays back immediately in full-screen
+4. Controls: Pause/Play, Restart, Regenerate (re-prompts), Back to Drawing
+
+### Files affected
+- `src/app/api/animate/route.ts` (**new**) — POST handler: receives `{imageDataUrl, prompt, strokes}`, calls Anthropic Messages API with vision, sanitizes returned code, returns `{code}`
+- `src/components/canvas/AnimateOverlay.tsx` (**new**) — Full state machine component: idle → loading → playing → error. Pixel-block loader canvas, animation playback with rAF loop, floating controls pill, progress bar
+- `src/components/canvas/LeftToolbar.tsx` — Removed `comingSoon: true` from animate button
+- `src/components/canvas/DrawingCanvas.tsx` — Added `animateSnapshot` state (captured via `toDataURL` when animate activates), renders `AnimateOverlay` at z-[100]
+
+### Decisions made
+- **Direct fetch to Anthropic API** (no SDK) — avoids a heavy dependency for a small number of API calls; uses `claude-sonnet-4-6` with vision
+- **`new Function('return (' + code + ')')()` for execution** — wraps function expression and calls it, returning the function. Safer than `eval` because `new Function` has no access to local scope; still inside try-catch per frame
+- **`sanitize()`**: strips markdown fences, extracts the `animate` function, blocks 12 dangerous APIs (`fetch`, `document`, `window`, `eval`, `setTimeout`, etc.)
+- **Canvas snapshot on tool switch**: `toDataURL('image/png')` is called once when the user clicks ⚡ — the animation always plays over the drawing at that moment, not a live capture
+- **`ANIM_DURATION = 7000ms`** per loop — long enough for complex animations, short enough for satisfying loops
+- **Pixel loader**: shuffled block-reveal animation matching the WelcomeCanvas aesthetic; loops indefinitely with random re-shuffle
+- **`isPausedRef`** (not state) for pause: avoids stale closure in rAF loop; `isPaused` in phase state only drives UI rendering
+- **Phase-driven `useEffect`**: detects `phase.name === 'playing'` via code dependency — recompiles + reloads bg image each time a new code string arrives (handles Regenerate correctly)
+
 ## feat: add text tool with canvas baking, selection, drag, and delete
 **Date:** 2026-02-24
 **Commit:** 988b90f
