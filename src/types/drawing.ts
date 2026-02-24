@@ -10,6 +10,7 @@ export type DrawTool =
   | 'line'
   | 'arrow'
   | 'triangle'
+  | 'text'
   | 'animate'
 
 export type ShapeType = 'rect' | 'circle' | 'ellipse' | 'line' | 'arrow' | 'triangle'
@@ -20,13 +21,34 @@ export interface StrokePoint {
   pressure: number
 }
 
-export interface CompletedStroke {
+export interface FreehandStroke {
   id: string
   points: StrokePoint[]
   color: string
   size: number
   opacity: number
   tool: Extract<DrawTool, 'pencil' | 'brush' | 'highlighter' | 'eraser'>
+}
+
+export interface TextStroke {
+  id: string
+  type: 'text'
+  text: string
+  x: number
+  y: number
+  fontSize: number
+  color: string
+}
+
+export type CompletedStroke = FreehandStroke | TextStroke
+
+export function isTextStroke(s: CompletedStroke): s is TextStroke {
+  return (s as TextStroke).type === 'text'
+}
+
+// strokeWidth 1..60 → fontSize 12..72px (linear)
+export function strokeWidthToFontSize(strokeWidth: number): number {
+  return Math.round(12 + ((strokeWidth - 1) / 59) * 60)
 }
 
 export interface DrawingShape {
@@ -67,7 +89,7 @@ export const KEYBOARD_SHORTCUTS: Record<string, DrawTool> = {
   c: 'circle',
   l: 'line',
   a: 'arrow',
-  t: 'triangle',
+  t: 'text',
 }
 
 export const TOOL_OPTIONS = {

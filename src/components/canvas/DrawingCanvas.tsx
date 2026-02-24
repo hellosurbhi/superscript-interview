@@ -2,11 +2,19 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import type { DrawTool, CanvasTransform, CompletedStroke } from '@/types/drawing'
+import { strokeWidthToFontSize } from '@/types/drawing'
 import { useDrawing } from '@/hooks/useDrawing'
 import LeftToolbar from './LeftToolbar'
 
 const TAP_MOVE_THRESHOLD = 5
 const TAP_TIME_MS = 200
+
+interface TextOverlayState {
+  canvasX: number
+  canvasY: number
+  screenX: number
+  screenY: number
+}
 
 interface DrawingCanvasProps {
   drawingId?: string
@@ -25,6 +33,11 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null)
   const [shiftHeld, setShiftHeld] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+
+  // Text tool overlay
+  const [textOverlay, setTextOverlay] = useState<TextOverlayState | null>(null)
+  const textOverlayRef = useRef<HTMLDivElement>(null)
+  const textValueRef = useRef('')
 
   // Share / save state
   const drawingIdRef = useRef<string | null>(drawingId ?? null)
@@ -85,6 +98,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if ((e.target as HTMLElement)?.isContentEditable) return
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedStrokeId) {
         drawing.deleteSelectedStroke()
         setSelectedStrokeId(null)
@@ -139,10 +153,44 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     }, 1500)
   }, [drawing])
 
+  const commitTextOverlay = useCallback(() => {
+    if (!textOverlay) return
+    const text = textValueRef.current.trim()
+    if (text.length > 0) {
+      const fontSize = strokeWidthToFontSize(strokeWidth)
+      drawing.addTextStroke(text, textOverlay.canvasX, textOverlay.canvasY, fontSize, activeColor)
+      scheduleSave()
+    }
+    setTextOverlay(null)
+    textValueRef.current = ''
+  }, [textOverlay, strokeWidth, activeColor, drawing, scheduleSave])
+
+  const handleOverlayKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        commitTextOverlay()
+      }
+      if (e.key === 'Escape') {
+        setTextOverlay(null)
+        textValueRef.current = ''
+      }
+    },
+    [commitTextOverlay]
+  )
+
+  // Auto-focus the text overlay when it opens
+  useEffect(() => {
+    if (textOverlay) textOverlayRef.current?.focus()
+  }, [textOverlay])
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.isPrimary === false) return
       if (activeTool === 'animate') return
+
+      // Commit any open text overlay first, then let the click proceed
+      if (textOverlay) commitTextOverlay()
 
       e.currentTarget.setPointerCapture(e.pointerId)
 
@@ -153,6 +201,9 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
       isDraggingRef.current = false
 
       const transformArgs = { scale: transform.scale, tx: transform.translateX, ty: transform.translateY }
+
+      // Text tool: don't start a freehand stroke; overlay will open on pointer-up tap
+      if (activeTool === 'text') return
 
       // Shift or explicit eraser → start erase stroke immediately
       if (e.shiftKey || activeTool === 'eraser') {
@@ -180,7 +231,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         transformArgs
       )
     },
-    [activeTool, activeColor, strokeWidth, drawing, getEventPos, transform, selectedStrokeId]
+    [activeTool, activeColor, strokeWidth, drawing, getEventPos, transform, selectedStrokeId, textOverlay, commitTextOverlay]
   )
 
   const handlePointerMove = useCallback(
@@ -252,10 +303,21 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         return
       }
 
-      // Tap detection: select or deselect
+      // Tap detection: select, deselect, or place text
       const isTap = !hasMovedRef.current && elapsed < TAP_TIME_MS
       if (isTap) {
         drawing.cancelCurrentStroke()
+        if (activeTool === 'text') {
+          const rect = wrapperRef.current!.getBoundingClientRect()
+          setTextOverlay({
+            canvasX: pos.x,
+            canvasY: pos.y,
+            screenX: e.clientX - rect.left,
+            screenY: e.clientY - rect.top,
+          })
+          textValueRef.current = ''
+          return
+        }
         const hitId = drawing.selectStrokeAtPoint(pos.x, pos.y)
         setSelectedStrokeId(hitId)
         return
@@ -272,13 +334,14 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
+      if (textOverlay) commitTextOverlay()
       const t0 = e.touches[0]
       const t1 = e.touches[1]
       pinchRef.current = {
         dist: Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
       }
     }
-  }, [])
+  }, [textOverlay, commitTextOverlay])
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault()
@@ -301,6 +364,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault()
+    if (textOverlay) commitTextOverlay()
     if (e.ctrlKey || e.metaKey) {
       const scaleDelta = e.deltaY > 0 ? 0.9 : 1.1
       setTransform((prev) => ({
@@ -314,7 +378,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         translateY: prev.translateY - e.deltaY,
       }))
     }
-  }, [])
+  }, [textOverlay, commitTextOverlay])
 
   const handleClear = useCallback(() => {
     drawing.clearCanvas()
@@ -357,9 +421,11 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
       ? 'grab'
       : (shiftHeld || activeTool === 'eraser')
         ? 'cell'
-        : activeTool === 'animate'
-          ? 'default'
-          : 'crosshair'
+        : activeTool === 'text'
+          ? 'text'
+          : activeTool === 'animate'
+            ? 'default'
+            : 'crosshair'
 
   return (
     <div className="fixed inset-0 bg-[#f5f5f0] overflow-hidden">
@@ -411,6 +477,34 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
           />
         </div>
 
+        {/* Text input overlay — positioned in screen space, outside the CSS transform div */}
+        {textOverlay && (
+          <div
+            ref={textOverlayRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => { textValueRef.current = e.currentTarget.textContent ?? '' }}
+            onKeyDown={handleOverlayKeyDown}
+            style={{
+              position: 'absolute',
+              left: textOverlay.screenX,
+              top: textOverlay.screenY,
+              fontSize: `${strokeWidthToFontSize(strokeWidth) * transform.scale}px`,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              color: activeColor,
+              caretColor: activeColor,
+              outline: `1.5px dashed ${activeColor}55`,
+              padding: 0,
+              minWidth: '2ch',
+              whiteSpace: 'pre',
+              lineHeight: 1,
+              zIndex: 20,
+              background: 'transparent',
+              cursor: 'text',
+            }}
+          />
+        )}
+
         {/* Zoom indicator */}
         {transform.scale !== 1 && (
           <div className="absolute top-3 right-3 font-pixel text-[7px] text-black/30 pointer-events-none z-10">
@@ -428,7 +522,11 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         {/* Tool hint — shown when nothing is selected */}
         {!selectedStrokeId && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 font-pixel text-[7px] text-black/20 pointer-events-none z-10">
-            {shiftHeld ? 'ERASER' : activeTool.toUpperCase()}
+            {activeTool === 'text'
+              ? `TEXT · ${strokeWidthToFontSize(strokeWidth)}px`
+              : shiftHeld
+                ? 'ERASER'
+                : activeTool.toUpperCase()}
           </div>
         )}
       </div>

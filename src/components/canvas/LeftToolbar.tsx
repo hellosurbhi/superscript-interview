@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import type { DrawTool } from '@/types/drawing'
+import { strokeWidthToFontSize } from '@/types/drawing'
 
 interface LeftToolbarProps {
   activeTool: DrawTool
@@ -23,6 +24,7 @@ const SIDEBAR_TOOLS: Array<{
 }> = [
   { id: 'pencil', icon: '✏', label: 'Pencil' },
   { id: 'eraser', icon: '◻', label: 'Eraser' },
+  { id: 'text', icon: 'T', label: 'Text (T)' },
   { id: 'animate', icon: '⚡', label: 'Animate', comingSoon: true },
 ]
 
@@ -40,8 +42,10 @@ export default function LeftToolbar({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if ((e.target as HTMLElement)?.isContentEditable) return
       if (e.key === 'p' || e.key === 'P') onToolChange('pencil')
       if (e.key === 'e' || e.key === 'E') onToolChange('eraser')
+      if (e.key === 't' || e.key === 'T') onToolChange('text')
       if (e.key === '[') onStrokeWidthChange(Math.max(1, strokeWidth - 2))
       if (e.key === ']') onStrokeWidthChange(Math.min(60, strokeWidth + 2))
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -100,6 +104,13 @@ export default function LeftToolbar({
 
             {comingSoon && (
               <span className="font-pixel text-[4px] text-white/20 tracking-wider">SOON</span>
+            )}
+
+            {/* Font size indicator — shown below text tool when active */}
+            {id === 'text' && isActive && (
+              <div className="flex flex-col items-center mt-1 gap-1">
+                <span className="font-pixel text-[5px] text-[#00f5ff]">{strokeWidthToFontSize(strokeWidth)}px</span>
+              </div>
             )}
 
             {/* Vertical thickness slider — shown below pencil when active */}

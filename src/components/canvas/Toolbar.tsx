@@ -26,7 +26,7 @@ const TOOLS: Array<{ id: DrawTool; icon: string; label: string; shortcut: string
   { id: 'ellipse',     icon: '⬭',   label: 'Ellipse',     shortcut: 'O' },
   { id: 'line',        icon: '╱',   label: 'Line',        shortcut: 'L' },
   { id: 'arrow',       icon: '→',   label: 'Arrow',       shortcut: 'A' },
-  { id: 'triangle',    icon: '▲',   label: 'Triangle',    shortcut: 'T' },
+  { id: 'triangle',    icon: '▲',   label: 'Triangle',    shortcut: '' },
 ]
 
 export default function Toolbar({
@@ -54,8 +54,9 @@ export default function Toolbar({
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Don't fire when typing in an input
+      // Don't fire when typing in an input or contenteditable
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if ((e.target as HTMLElement)?.isContentEditable) return
 
       const tool = KEYBOARD_SHORTCUTS[e.key.toLowerCase()]
       if (tool) {

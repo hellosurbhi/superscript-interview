@@ -2,8 +2,8 @@
 
 import { useRef, useCallback } from 'react'
 import { getStroke } from 'perfect-freehand'
-import type { DrawTool, StrokePoint, CompletedStroke } from '@/types/drawing'
-import { TOOL_OPTIONS } from '@/types/drawing'
+import type { DrawTool, StrokePoint, CompletedStroke, TextStroke } from '@/types/drawing'
+import { TOOL_OPTIONS, isTextStroke } from '@/types/drawing'
 
 function getSvgPathFromStroke(stroke: number[][]): string {
   if (!stroke.length) return ''
@@ -116,6 +116,16 @@ export function useDrawing(
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       for (const stroke of strokes) {
+        if (isTextStroke(stroke)) {
+          ctx.save()
+          ctx.font = `${stroke.fontSize}px Inter, system-ui, sans-serif`
+          ctx.fillStyle = stroke.color
+          ctx.globalAlpha = 1
+          ctx.textBaseline = 'top'
+          ctx.fillText(stroke.text, stroke.x, stroke.y)
+          ctx.restore()
+          continue
+        }
         drawStrokeToCtx(ctx, stroke.points, stroke.tool, stroke.color, stroke.size, stroke.opacity)
       }
 
@@ -237,6 +247,20 @@ export function useDrawing(
       const strokes = completedStrokesRef.current
       for (let i = strokes.length - 1; i >= 0; i--) {
         const stroke = strokes[i]
+
+        if (isTextStroke(stroke)) {
+          const tmp = document.createElement('canvas')
+          const tmpCtx = tmp.getContext('2d')
+          if (!tmpCtx) continue
+          tmpCtx.font = `${stroke.fontSize}px Inter, system-ui, sans-serif`
+          const w = tmpCtx.measureText(stroke.text).width
+          if (x >= stroke.x && x <= stroke.x + w && y >= stroke.y && y <= stroke.y + stroke.fontSize) {
+            selectedStrokeIdRef.current = stroke.id
+            return stroke.id
+          }
+          continue
+        }
+
         if (stroke.tool === 'eraser') continue
 
         const offscreen = document.createElement('canvas')
@@ -268,7 +292,17 @@ export function useDrawing(
       const canvas = canvasRef.current
       if (!canvas) return false
       const stroke = completedStrokesRef.current.find((s) => s.id === id)
-      if (!stroke || stroke.tool === 'eraser') return false
+      if (!stroke) return false
+
+      if (isTextStroke(stroke)) {
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return false
+        ctx.font = `${stroke.fontSize}px Inter, system-ui, sans-serif`
+        const w = ctx.measureText(stroke.text).width
+        return x >= stroke.x && x <= stroke.x + w && y >= stroke.y && y <= stroke.y + stroke.fontSize
+      }
+
+      if (stroke.tool === 'eraser') return false
 
       const offscreen = document.createElement('canvas')
       offscreen.width = canvas.width
@@ -291,7 +325,12 @@ export function useDrawing(
       const strokes = completedStrokesRef.current
       const stroke = strokes.find((s) => s.id === id)
       if (!stroke) return
-      stroke.points = stroke.points.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }))
+      if (isTextStroke(stroke)) {
+        stroke.x += dx
+        stroke.y += dy
+      } else {
+        stroke.points = stroke.points.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }))
+      }
       const canvas = canvasRef.current
       if (!canvas) return
       const ctx = canvas.getContext('2d')
@@ -342,6 +381,20 @@ export function useDrawing(
 
       haloCtx.save()
 
+      if (isTextStroke(stroke)) {
+        haloCtx.font = `${stroke.fontSize}px Inter, system-ui, sans-serif`
+        const w = haloCtx.measureText(stroke.text).width
+        const pad = 6
+        haloCtx.strokeStyle = 'rgba(255, 140, 0, 0.8)'
+        haloCtx.lineWidth = 1.5
+        haloCtx.setLineDash([4, 3])
+        haloCtx.shadowColor = 'rgba(255, 120, 0, 0.6)'
+        haloCtx.shadowBlur = 8
+        haloCtx.strokeRect(stroke.x - pad, stroke.y - pad, w + pad * 2, stroke.fontSize + pad * 2)
+        haloCtx.restore()
+        return
+      }
+
       if (stroke.points.length === 1) {
         // Single dot: draw a glowing ring around it
         haloCtx.shadowColor = 'rgba(255, 120, 0, 0.95)'
@@ -376,6 +429,24 @@ export function useDrawing(
     [] // reads refs directly — no reactive deps needed
   )
 
+  const addTextStroke = useCallback(
+    (text: string, x: number, y: number, fontSize: number, color: string) => {
+      const stroke: TextStroke = {
+        id: crypto.randomUUID(),
+        type: 'text',
+        text,
+        x,
+        y,
+        fontSize,
+        color,
+      }
+      completedStrokesRef.current.push(stroke)
+      const ctx = canvasRef.current?.getContext('2d')
+      if (ctx) redrawAll(ctx, completedStrokesRef.current)
+    },
+    [canvasRef, redrawAll]
+  )
+
   const getStrokes = useCallback(() => completedStrokesRef.current, [])
 
   const redrawFromHistory = useCallback(() => {
@@ -400,6 +471,7 @@ export function useDrawing(
     isPointOnStroke,
     moveStroke,
     deleteSelectedStroke,
+    addTextStroke,
     selectedStrokeId: selectedStrokeIdRef,
   }
 }
