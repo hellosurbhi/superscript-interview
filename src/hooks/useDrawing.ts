@@ -490,6 +490,15 @@ export function useDrawing(
     [canvasRef, redrawAll, saveToSession]
   )
 
+  const setExternalStrokes = useCallback((strokes: CompletedStroke[]) => {
+    completedStrokesRef.current = strokes
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    redrawAll(ctx, strokes)
+  }, [canvasRef, redrawAll])
+
   const getStrokes = useCallback(() => completedStrokesRef.current, [])
 
   const redrawFromHistory = useCallback(() => {
@@ -506,6 +515,7 @@ export function useDrawing(
     cancelCurrentStroke,
     clearCanvas,
     undoLast,
+    setExternalStrokes,
     getStrokes,
     redrawFromHistory,
     drawSelectionHalo,

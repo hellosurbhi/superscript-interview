@@ -71,6 +71,7 @@ export default function SharedDrawPage() {
         initialStrokes={shared!.strokes}
         initialAnimationCode={shared!.animation_code ?? undefined}
         initialAnimationPrompt={shared!.animation_prompt ?? undefined}
+        shareToken={token}
       />
     </main>
   )

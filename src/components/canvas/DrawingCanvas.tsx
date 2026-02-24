@@ -24,9 +24,10 @@ interface DrawingCanvasProps {
   initialStrokes?: CompletedStroke[]
   initialAnimationCode?: string
   initialAnimationPrompt?: string
+  shareToken?: string
 }
 
-export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimationCode, initialAnimationPrompt }: DrawingCanvasProps = {}) {
+export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimationCode, initialAnimationPrompt, shareToken }: DrawingCanvasProps = {}) {
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null)
   const haloCanvasRef = useRef<HTMLCanvasElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -50,6 +51,10 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
     const t = setTimeout(() => setShowTutorial(false), 5000)
     return () => clearTimeout(t)
   }, [])
+
+  // Live sync — poll for updates when viewing a shared drawing
+  const [syncFlash, setSyncFlash] = useState(false)
+  const lastUpdatedAtRef = useRef<string | null>(null)
 
   // Animate tool — snapshot of drawing canvas at the moment animate is activated
   const [animateSnapshot, setAnimateSnapshot] = useState<{
@@ -107,6 +112,41 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
   const pinchRef = useRef<{ dist: number } | null>(null)
 
   const drawing = useDrawing(drawingCanvasRef, initialStrokes)
+
+  // Poll for remote updates every 5s when viewing a shared drawing
+  useEffect(() => {
+    if (!shareToken) return
+
+    const poll = async () => {
+      if (drawing.isDrawing.current) return
+
+      try {
+        const res = await fetch(`/api/drawings/${shareToken}`)
+        if (!res.ok) return
+        const data = await res.json() as { updated_at: string | null; strokes: CompletedStroke[] }
+        const serverTime = data.updated_at ?? null
+
+        if (lastUpdatedAtRef.current === null) {
+          // First poll — seed the ref; strokes already loaded from initial render
+          lastUpdatedAtRef.current = serverTime
+          return
+        }
+
+        if (serverTime && serverTime !== lastUpdatedAtRef.current) {
+          lastUpdatedAtRef.current = serverTime
+          drawing.setExternalStrokes(data.strokes)
+          setSyncFlash(true)
+          setTimeout(() => setSyncFlash(false), 1000)
+        }
+      } catch {
+        // ignore polling errors silently
+      }
+    }
+
+    const id = setInterval(poll, 5000)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareToken])
 
   // Resize both canvases and always repaint — canvas clears on dimension change
   useEffect(() => {
@@ -640,6 +680,19 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
             }}
           />
         )}
+
+        {/* Sync flash — fades in instantly, fades out over 500ms */}
+        <div
+          className="font-pixel pointer-events-none absolute bottom-4 right-4 z-20 text-[7px]"
+          style={{
+            color: '#ff006e',
+            opacity: syncFlash ? 0.7 : 0,
+            transition: syncFlash ? 'none' : 'opacity 0.5s ease-out',
+            letterSpacing: '0.06em',
+          }}
+        >
+          ↻ synced
+        </div>
 
         {/* Zoom indicator */}
         {transform.scale !== 1 && (
