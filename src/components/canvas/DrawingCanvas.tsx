@@ -7,6 +7,7 @@ import { useDrawing } from '@/hooks/useDrawing'
 import LeftToolbar from './LeftToolbar'
 import AnimateOverlay from './AnimateOverlay'
 import ShareModal from './ShareModal'
+import ShortcutsOverlay from './ShortcutsOverlay'
 
 const TAP_MOVE_THRESHOLD = 5
 const TAP_TIME_MS = 200
@@ -93,6 +94,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
   const [shareState, setShareState] = useState<'idle' | 'saving' | 'copied' | 'error'>('idle')
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
   const [shareModal, setShareModal] = useState<{ url: string } | null>(null)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   // Interaction tracking refs
   const hasMovedRef = useRef(false)
@@ -139,11 +141,16 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
     drawing.drawSelectionHalo(haloCtx, haloCanvas.width, haloCanvas.height)
   }, [selectedStrokeId, drawing])
 
-  // Delete key — works in any tool mode
+  // Delete / Escape key — works in any tool mode
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if ((e.target as HTMLElement)?.isContentEditable) return
+      if (e.key === 'Escape') {
+        setShowShortcuts(false)
+        setSelectedStrokeId(null)
+        drawing.selectedStrokeId.current = null
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedStrokeId) {
           drawing.deleteSelectedStroke()
@@ -531,6 +538,11 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
         <ShareModal shareUrl={shareModal.url} onClose={() => setShareModal(null)} />
       )}
 
+      {/* Shortcuts overlay */}
+      {showShortcuts && (
+        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
+      )}
+
       {/* Animate overlay — covers everything when animate tool is active */}
       {activeTool === 'animate' && animateSnapshot && (
         <AnimateOverlay
@@ -556,6 +568,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
         shareState={shareState}
         expiresAt={expiresAt}
         showTutorial={showTutorial}
+        onShowShortcuts={() => setShowShortcuts(true)}
       />
 
       {/* Canvas area */}

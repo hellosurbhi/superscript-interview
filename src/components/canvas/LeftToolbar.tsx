@@ -15,6 +15,7 @@ interface LeftToolbarProps {
   shareState: 'idle' | 'saving' | 'copied' | 'error'
   expiresAt: number | null
   showTutorial: boolean
+  onShowShortcuts: () => void
 }
 
 const SIDEBAR_TOOLS: Array<{
@@ -30,7 +31,7 @@ const SIDEBAR_TOOLS: Array<{
   { id: 'animate', icon: '⚡', label: 'Animate', shortcut: '' },
 ]
 
-type HoverTarget = DrawTool | 'undo' | 'clear' | 'share' | null
+type HoverTarget = DrawTool | 'undo' | 'clear' | 'share' | 'shortcuts' | null
 
 export default function LeftToolbar({
   activeTool,
@@ -43,6 +44,7 @@ export default function LeftToolbar({
   shareState,
   expiresAt,
   showTutorial,
+  onShowShortcuts,
 }: LeftToolbarProps) {
   const [hoveredTarget, setHoveredTarget] = useState<HoverTarget>(null)
 
@@ -61,16 +63,18 @@ export default function LeftToolbar({
       if (e.key === 'p' || e.key === 'P') onToolChange('pencil')
       if (e.key === 'e' || e.key === 'E') onToolChange('eraser')
       if (e.key === 't' || e.key === 'T') onToolChange('text')
+      if (e.key === 'a' || e.key === 'A') onToolChange('animate')
       if (e.key === '[') onStrokeWidthChange(Math.max(1, strokeWidth - 2))
       if (e.key === ']') onStrokeWidthChange(Math.min(60, strokeWidth + 2))
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault()
         onUndo()
       }
+      if (e.key === '?') onShowShortcuts()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [activeTool, onToolChange, onUndo, strokeWidth, onStrokeWidthChange])
+  }, [activeTool, onToolChange, onUndo, strokeWidth, onStrokeWidthChange, onShowShortcuts])
 
   const showLabel = (target: HoverTarget) =>
     hoveredTarget === target || showTutorial
@@ -283,6 +287,36 @@ export default function LeftToolbar({
               }}
             >
               Share  ·  ↗
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Shortcuts help */}
+      <div className="relative">
+        <button
+          onClick={onShowShortcuts}
+          onMouseEnter={() => setHoveredTarget('shortcuts')}
+          onMouseLeave={() => setHoveredTarget(null)}
+          title="Keyboard shortcuts (?)"
+          className="flex items-center justify-center w-10 h-10 rounded border border-white/8 text-white/25 hover:border-[#00f5ff]/30 hover:text-[#00f5ff]/70 hover:bg-[#00f5ff]/5 transition-all duration-150 font-pixel text-[9px]"
+        >
+          ?
+        </button>
+        {hoveredTarget === 'shortcuts' && (
+          <div className="absolute left-full ml-3 top-0 z-[60] flex flex-col gap-0.5 pointer-events-none">
+            <span
+              className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
+              style={{
+                background: 'rgba(13,13,26,0.97)',
+                border: '1px solid rgba(0,245,255,0.2)',
+                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+              }}
+            >
+              Shortcuts
+            </span>
+            <span className="font-pixel text-[5px] text-[#00f5ff]/60 whitespace-nowrap px-1">
+              ?
             </span>
           </div>
         )}
