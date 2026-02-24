@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## fix: animation engine crash — accurate frameData schema, per-frame resilience, pre-eval check
+**Date:** 2026-02-24
+**Commit:** 56c1b18
+
+### Root cause
+Three compounding problems caused the "Cannot read properties of undefined (reading 'x')" crash:
+
+1. **Wrong system prompt schema**: `frameData` was described with a `bbox: {x,y,w,h}` property that doesn't exist at runtime. The LLM faithfully generated `stroke.bbox.x` → undefined dereference. Also: `points` was shown as optional with no type detail, hiding the required `[i].x` access pattern.
+
+2. **Stop-on-first-frame error**: The RAF loop's try-catch called `stopLoop()` on any throw, killing the whole animation immediately. One bad frame (e.g. on progress=0 before strokes were ready) was fatal.
+
+3. **No pre-eval validation**: LLM-generated code was compiled with `new Function()` with no check for whether it even referenced `frameData.strokes`, so hallucinated data structures failed silently.
+
+### Fixes
+
+**`src/app/api/animate/route.ts`** — Replaced single-line `frameData:` description with:
+- Exact `FreehandStroke` type: `{ id, tool, points: [{x,y,pressure}], color, size, opacity }`
+- Exact `TextStroke` type: `{ id, type:"text", text, x, y, fontSize, color }`
+- Explicit type guard pattern (`stroke.type === "text"`)
+- Points access guard: `if (!stroke.points?.length) continue`
+- Hard `IMPORTANT: There is NO bbox` warning
+- Full usage example showing both stroke types
+
+**`src/components/canvas/AnimateOverlay.tsx`**:
+- Added `frameErrorCountRef = useRef(0)` to track consecutive frame errors
+- Per-frame catch: `console.error` with progress + error, then continue the RAF (don't stop)
+- Hard-stop only after 30 consecutive errors (prevents silent infinite loops)
+- Pre-eval: warns to console if code omits `frameData` entirely or uses `frameData` without `.strokes`
+- Resets `frameErrorCountRef` to 0 when a new animation compiles (no cross-animation bleed)
+
+### Files affected
+- `src/app/api/animate/route.ts`
+- `src/components/canvas/AnimateOverlay.tsx`
+
+---
+
 ## feat: warm landing retheme + seamless canvas transition
 **Date:** 2026-02-24
 **Commit:** 3f41bad
