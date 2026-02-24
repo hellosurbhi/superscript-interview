@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## feat: unified draw-select-drag interaction model
+**Date:** 2026-02-24
+**Commit:** 6b266a6
+
+### What changed and why
+
+Collapsed the multi-mode (pencil / eraser / select) friction model into a single gesture-driven interaction. Users no longer need to switch tools to select or erase — the gesture determines the action.
+
+**New interaction table:**
+- `pointerdown` + drag → draw stroke (pencil/brush/highlighter based on active tool)
+- `pointerdown` + release < 5px + < 200ms on a stroke → **select** (amber halo, cursor → grab)
+- `pointerdown` + release < 5px + < 200ms on empty space → **deselect**
+- `pointerdown` ON selected stroke + drag → **move** (stroke and halo track in realtime)
+- `Delete`/`Backspace` with selection → **delete** (now works in any tool mode, removed eraser guard)
+- `Shift` + drag → **eraser** (temporary, reverts on shift release; eraser button in sidebar highlights)
+- Eraser sidebar / `E` key → **explicit persistent eraser mode**
+
+**`useDrawing.ts` additions:**
+- `isPointOnStroke(x, y, id)` — renders a single stroke to offscreen canvas, pixel-tests the exact point. Used to detect if a pointerdown on a selected stroke should start a drag vs. a new stroke
+- `moveStroke(id, dx, dy)` — mutates all points of a stroke by (dx, dy) in canvas coords, triggers immediate redraw. Called per-frame during drag for smooth realtime movement
+
+**`DrawingCanvas.tsx` full pointer handler rewrite:**
+- Removed `eraserHasMovedRef`, `eraserDownPosRef`, `ERASER_MOVE_THRESHOLD`
+- Added `hasMovedRef`, `downPosRef`, `downTimeRef`, `isDraggingRef`, `dragLastPosRef` for unified tap/drag detection
+- Added `shiftHeld` state (shift key tracking useEffect) — drives eraser visual highlight and temporary eraser mode
+- Added `isDragging` state alongside ref for cursor re-renders
+- `handlePointerDown`: checks shift/eraser first, then drag-on-selected, then starts draw stroke
+- `handlePointerMove`: handles drag (moveStroke + redraw halo), then eraser, then draw
+- `handlePointerUp`: ends drag / commits eraser / tap-selects / commits draw stroke
+- Cursor: `grabbing` (dragging) → `grab` (selected) → `cell` (eraser/shift) → `crosshair` (draw)
+- LeftToolbar receives `shiftHeld ? 'eraser' : activeTool` so the eraser button lights up on shift
+- Hint text updated: "DRAG TO MOVE · DELETE TO REMOVE" when stroke selected; shows shift state in tool name
+
+**Files affected:** `src/hooks/useDrawing.ts`, `src/components/canvas/DrawingCanvas.tsx`
+
+---
+
 ## feat: selection halo + cursor feedback for eraser component-select
 **Date:** 2026-02-24
 
