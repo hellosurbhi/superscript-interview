@@ -115,6 +115,7 @@ export default function AnimateOverlay({
   const isPausedRef = useRef(false)
   const animFnRef = useRef<AnimFn | null>(null)
   const bgImageRef = useRef<HTMLImageElement | null>(null)
+  const frameErrorCountRef = useRef(0)
   const [progress, setProgress] = useState(0)
 
   const stopLoop = useCallback(() => {
@@ -148,10 +149,16 @@ export default function AnimateOverlay({
 
       try {
         animFn(ctx, w, h, frameData, p)
+        frameErrorCountRef.current = 0
       } catch (e) {
-        stopLoop()
-        setPhase({ name: 'error', message: 'Animation crashed: ' + String(e) })
-        return
+        frameErrorCountRef.current++
+        console.error(`[animate] frame error (${frameErrorCountRef.current}) at progress ${p.toFixed(3)}:`, e)
+        if (frameErrorCountRef.current > 30) {
+          stopLoop()
+          setPhase({ name: 'error', message: 'Animation crashed: ' + String(e) })
+          return
+        }
+        // skip this frame — continue the loop
       }
 
       setProgress(p)
@@ -168,9 +175,20 @@ export default function AnimateOverlay({
       return
     }
 
+    // Sanity-check generated code structure before compiling
+    const code = phase.code
+    if (!code.includes('frameData')) {
+      console.warn('[animate] generated code does not reference frameData — LLM may have ignored stroke data')
+    } else if (!code.includes('frameData.strokes') && !code.includes("frameData['strokes']")) {
+      console.warn('[animate] generated code uses frameData but not .strokes — LLM may have hallucinated a different structure. Preview:', code.slice(0, 300))
+    }
+
+    // Reset frame error counter for new animation
+    frameErrorCountRef.current = 0
+
     // Compile animation function
     try {
-      animFnRef.current = new Function(`return (${phase.code})`)() as AnimFn
+      animFnRef.current = new Function(`return (${code})`)() as AnimFn
     } catch (e) {
       setPhase({ name: 'error', message: 'Failed to compile animation: ' + String(e) })
       return

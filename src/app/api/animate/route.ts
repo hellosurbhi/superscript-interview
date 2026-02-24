@@ -10,7 +10,24 @@ REQUIREMENTS:
 - Output ONLY the function — no markdown, no explanation, no comments outside it
 - Exact signature: function animate(ctx, width, height, frameData, progress) { ... }
 - progress: number 0→1, represents one full animation cycle (loops back to 0 automatically)
-- frameData: object { strokes: Array<{id, type, x?, y?, text?, fontSize?, color?, points?, tool?, size?, bbox: {x,y,w,h}}> }
+- frameData.strokes — Array of stroke objects. Each stroke is one of two types:
+    FreehandStroke: { id: string, tool: "pencil"|"eraser", points: Array<{x:number, y:number, pressure:number}>, color: string, size: number, opacity: number }
+    TextStroke:     { id: string, type: "text", text: string, x: number, y: number, fontSize: number, color: string }
+  Type check: stroke.type === "text" → TextStroke, otherwise FreehandStroke
+  Points:     stroke.points[i].x and stroke.points[i].y  (ALWAYS guard: if (!stroke.points?.length) continue)
+  IMPORTANT:  There is NO bbox, NO width/height, NO shape property — derive bounds from points array if needed
+  Example usage:
+    for (const s of frameData.strokes) {
+      if (s.type === 'text') {
+        ctx.fillText(s.text, s.x, s.y)
+      } else {
+        const pts = s.points
+        if (!pts?.length) continue
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y)
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+        ctx.stroke()
+      }
+    }
 - ctx: Canvas 2D rendering context (the original drawing is already painted as background)
 - ONLY use Canvas 2D API methods (ctx.fillRect, ctx.arc, ctx.moveTo, ctx.lineTo, ctx.stroke, ctx.fill, etc.)
 - FORBIDDEN: fetch, XMLHttpRequest, import, require, document, window, localStorage, eval, setTimeout, setInterval
