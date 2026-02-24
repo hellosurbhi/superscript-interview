@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## fix: make StoredDrawing.updated_at nullable to match DB column
+**Date:** 2026-02-24
+**Commit:** e4755f7
+
+### What changed
+`StoredDrawing.updated_at` was typed `string` (non-nullable) but the `drawings` table column is `NULL` on fresh rows — `updateDrawing()` is the only caller that sets it, and only after an animation save. Typing it as non-nullable was a silent type lie that would cause issues when reading back a freshly-created drawing.
+
+**File:** `src/lib/drawings.ts:12`
+- `updated_at: string` → `updated_at: string | null`
+
+### Context
+Part of fixing POST /api/drawings 500. The primary fix is creating the `drawings` table in Supabase (SQL below); this type fix is the companion code change. No behaviour changes — purely a type correction.
+
+---
+
 ## fix: animation engine crash — accurate frameData schema, per-frame resilience, pre-eval check
 **Date:** 2026-02-24
 **Commit:** 56c1b18
