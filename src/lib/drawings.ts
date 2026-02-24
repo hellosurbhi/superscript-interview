@@ -9,7 +9,7 @@ export interface StoredDrawing {
   animation_code: string | null
   animation_prompt: string | null
   created_at: string
-  updated_at: string
+  updated_at: string | null
   expires_at: string
 }
 
