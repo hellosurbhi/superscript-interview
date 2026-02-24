@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## feat: warm landing retheme + seamless canvas transition
+**Date:** 2026-02-24
+**Commit:** 3f41bad
+
+### Transition fix
+`/` and `/draw` are now the same page. `DrawingCanvas` mounts immediately and runs silently behind the landing overlay. Clicking the overlay sets `dismissing=true` → CSS transition `opacity 0, scale 1.04` over 600ms → overlay unmounts at 650ms. `pointerEvents: none` is set on the overlay the instant dismissal starts, so the canvas is interactive before the animation even finishes. No `router.push`, no page reload, no flash.
+
+### Vibe retheme — `WelcomeCanvas.tsx`
+- **Background:** Canvas now draws a warm cream-to-pink linear gradient (`#fff0f7` → `#ffd6ea`) each frame instead of the flat `#0a0a0a` fill. Outer div also gets the matching CSS gradient.
+- **PIXEL_COLORS:** Replaced cyan/blue/green neon palette with pinks, magentas, warm oranges, golds, and coral.
+- **Phase 0:** Single center pixel now magenta `#e91e8c` instead of cyan.
+- **Phase 1 (block reveal):** Blocks are soft pink-white `#f8e4f0` instead of `#111`.
+- **Phase 2 (logo):** SURBHIDRAW types out in magenta `rgba(233,30,140)` with pink glow layers and pink cursor. Grid lines are a barely-visible pink tint.
+- **Phase 3 (features):** Text is dark-rose `rgba(100,20,60)` with a soft `#c2185b` shadow instead of green.
+- **Phase 4 (NEW — pixel girl):** Replaced 6 horizontal paint strokes with a pixel-art girl character (brown skin `#8B5E3C`, dark hair `#1a0834`, all-pink outfit `#e91e8c`). She walks left-to-right at 3px/tick with 2 walk frames (legs alternate every 8 ticks). Every 3 ticks she drops a sparkle trail dot (randomly positioned around her feet, cycling through PIXEL_COLORS, fading out at 0.006 alpha/tick). Phase advances to 5 when she exits the right edge.
+- **Phase 5 (subtitle):** "DRAW. CREATE. ANIMATE. 2026." in dim warm rose `rgba(100,20,60,0.5)` instead of white.
+- **CTA panel:** Warm `rgba(255,240,247,0.88)` glass panel with magenta border/glow. All text in dark-wine and warm mauve tones.
+- **Removed:** `.crt-overlay` div (scanlines clash with warm background).
+- **Props change:** `WelcomeCanvas` now accepts `{ onEnter, dismissing }` instead of using `useRouter` internally.
+
+### `globals.css`
+Updated `@keyframes neon-blink` text-shadow from cyan `#00f5ff` to pink `#e91e8c` (used by "▶ CLICK ANYWHERE TO BEGIN").
+
+### `page.tsx`
+Imports both `DrawingCanvas` and `WelcomeOverlay` dynamically. Maintains `showWelcome` + `dismissing` state. Passes `onEnter` and `dismissing` to the overlay.
+
+### Files affected
+- `src/app/page.tsx`
+- `src/components/welcome/WelcomeCanvas.tsx`
+- `src/app/globals.css`
+
+---
+
 ## feat: add '?' shortcuts hint to welcome screen CTA
 **Date:** 2026-02-24
 **Commit:** 70e4d9d
