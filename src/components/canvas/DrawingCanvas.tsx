@@ -5,6 +5,7 @@ import type { DrawTool, CanvasTransform, CompletedStroke } from '@/types/drawing
 import { strokeWidthToFontSize } from '@/types/drawing'
 import { useDrawing } from '@/hooks/useDrawing'
 import LeftToolbar from './LeftToolbar'
+import AnimateOverlay from './AnimateOverlay'
 
 const TAP_MOVE_THRESHOLD = 5
 const TAP_TIME_MS = 200
@@ -33,6 +34,28 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null)
   const [shiftHeld, setShiftHeld] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+
+  // Animate tool — snapshot of drawing canvas at the moment animate is activated
+  const [animateSnapshot, setAnimateSnapshot] = useState<{
+    dataUrl: string
+    width: number
+    height: number
+  } | null>(null)
+
+  useEffect(() => {
+    if (activeTool === 'animate') {
+      const canvas = drawingCanvasRef.current
+      if (canvas && canvas.width > 0) {
+        setAnimateSnapshot({
+          dataUrl: canvas.toDataURL('image/png'),
+          width: canvas.width,
+          height: canvas.height,
+        })
+      }
+    } else {
+      setAnimateSnapshot(null)
+    }
+  }, [activeTool])
 
   // Text tool overlay
   const [textOverlay, setTextOverlay] = useState<TextOverlayState | null>(null)
@@ -429,6 +452,17 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   return (
     <div className="fixed inset-0 bg-[#f5f5f0] overflow-hidden">
+      {/* Animate overlay — covers everything when animate tool is active */}
+      {activeTool === 'animate' && animateSnapshot && (
+        <AnimateOverlay
+          canvasDataUrl={animateSnapshot.dataUrl}
+          canvasWidth={animateSnapshot.width}
+          canvasHeight={animateSnapshot.height}
+          strokes={drawing.getStrokes()}
+          onBack={() => setActiveTool('pencil')}
+        />
+      )}
+
       {/* Left toolbar */}
       <LeftToolbar
         activeTool={shiftHeld ? 'eraser' : activeTool}

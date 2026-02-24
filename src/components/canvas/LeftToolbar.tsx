@@ -25,7 +25,7 @@ const SIDEBAR_TOOLS: Array<{
   { id: 'pencil', icon: '✏', label: 'Pencil' },
   { id: 'eraser', icon: '◻', label: 'Eraser' },
   { id: 'text', icon: 'T', label: 'Text (T)' },
-  { id: 'animate', icon: '⚡', label: 'Animate', comingSoon: true },
+  { id: 'animate', icon: '⚡', label: 'Animate' },
 ]
 
 export default function LeftToolbar({
