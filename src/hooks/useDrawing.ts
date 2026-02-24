@@ -287,6 +287,40 @@ export function useDrawing(
     [canvasRef]
   )
 
+  const hitTestAtPoint = useCallback(
+    (x: number, y: number): string | null => {
+      const canvas = canvasRef.current
+      if (!canvas) return null
+      const strokes = completedStrokesRef.current
+      for (let i = strokes.length - 1; i >= 0; i--) {
+        const stroke = strokes[i]
+        if (isTextStroke(stroke)) {
+          const tmp = document.createElement('canvas')
+          const tmpCtx = tmp.getContext('2d')
+          if (!tmpCtx) continue
+          tmpCtx.font = `${stroke.fontSize}px Inter, system-ui, sans-serif`
+          const w = tmpCtx.measureText(stroke.text).width
+          if (x >= stroke.x && x <= stroke.x + w && y >= stroke.y && y <= stroke.y + stroke.fontSize)
+            return stroke.id
+          continue
+        }
+        if (stroke.tool === 'eraser') continue
+        const offscreen = document.createElement('canvas')
+        offscreen.width = canvas.width
+        offscreen.height = canvas.height
+        const offCtx = offscreen.getContext('2d')
+        if (!offCtx) continue
+        drawStrokeToCtx(offCtx, stroke.points, stroke.tool, '#ffffff', stroke.size, 1)
+        const px = Math.round(x)
+        const py = Math.round(y)
+        if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) continue
+        if (offCtx.getImageData(px, py, 1, 1).data[3] > 0) return stroke.id
+      }
+      return null
+    },
+    [canvasRef]
+  )
+
   const isPointOnStroke = useCallback(
     (x: number, y: number, id: string): boolean => {
       const canvas = canvasRef.current
@@ -468,6 +502,7 @@ export function useDrawing(
     drawSelectionHalo,
     isDrawing: isDrawingRef,
     selectStrokeAtPoint,
+    hitTestAtPoint,
     isPointOnStroke,
     moveStroke,
     deleteSelectedStroke,

@@ -35,6 +35,18 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
   const [shiftHeld, setShiftHeld] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
 
+  // Hover stroke detection — updates continuously on pointer move (throttled ~30fps)
+  const [hoverStrokeId, setHoverStrokeId] = useState<string | null>(null)
+  const hoverStrokeIdRef = useRef<string | null>(null)
+  const hoverThrottleRef = useRef(0)
+
+  // Tutorial — labels visible for first 5 seconds then disappear
+  const [showTutorial, setShowTutorial] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setShowTutorial(false), 5000)
+    return () => clearTimeout(t)
+  }, [])
+
   // Animate tool — snapshot of drawing canvas at the moment animate is activated
   const [animateSnapshot, setAnimateSnapshot] = useState<{
     dataUrl: string
@@ -122,9 +134,13 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if ((e.target as HTMLElement)?.isContentEditable) return
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedStrokeId) {
-        drawing.deleteSelectedStroke()
-        setSelectedStrokeId(null)
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedStrokeId) {
+          drawing.deleteSelectedStroke()
+          setSelectedStrokeId(null)
+        } else {
+          drawing.undoLast()
+        }
       }
     }
     window.addEventListener('keydown', handler)
@@ -242,6 +258,17 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         return
       }
 
+      // Hovering over any stroke → don't start freehand (prevents paint splash);
+      // tap-select will fire on pointerUp. If it's the selected stroke, start drag.
+      if (hoverStrokeIdRef.current) {
+        if (selectedStrokeId === hoverStrokeIdRef.current) {
+          isDraggingRef.current = true
+          setIsDragging(true)
+          dragLastPosRef.current = pos
+        }
+        return
+      }
+
       // Otherwise: start draw stroke (may be cancelled on tap)
       setSelectedStrokeId(null)
       drawing.selectedStrokeId.current = null
@@ -262,6 +289,19 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
       if (e.isPrimary === false) return
 
       const pos = getEventPos(e)
+
+      // Hover detection: update which stroke is under the cursor (throttled ~30fps)
+      if (!drawing.isDrawing.current && !isDraggingRef.current) {
+        const now = Date.now()
+        if (now - hoverThrottleRef.current > 33) {
+          hoverThrottleRef.current = now
+          const hovered = drawing.hitTestAtPoint(pos.x, pos.y)
+          if (hovered !== hoverStrokeIdRef.current) {
+            hoverStrokeIdRef.current = hovered
+            setHoverStrokeId(hovered)
+          }
+        }
+      }
 
       // Track movement for tap detection
       if (downPosRef.current && !hasMovedRef.current) {
@@ -326,11 +366,11 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         return
       }
 
-      // Tap detection: select, deselect, or place text
+      // Tap detection: select, place text, or commit a dot on empty canvas
       const isTap = !hasMovedRef.current && elapsed < TAP_TIME_MS
       if (isTap) {
-        drawing.cancelCurrentStroke()
         if (activeTool === 'text') {
+          drawing.cancelCurrentStroke()
           const rect = wrapperRef.current!.getBoundingClientRect()
           setTextOverlay({
             canvasX: pos.x,
@@ -341,8 +381,20 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
           textValueRef.current = ''
           return
         }
-        const hitId = drawing.selectStrokeAtPoint(pos.x, pos.y)
-        setSelectedStrokeId(hitId)
+        // Check hit without side effects
+        const hitId = drawing.hitTestAtPoint(pos.x, pos.y)
+        if (hitId) {
+          // Tap on existing stroke → select it (cancel any in-progress freehand)
+          drawing.cancelCurrentStroke()
+          drawing.selectedStrokeId.current = hitId
+          setSelectedStrokeId(hitId)
+        } else {
+          // Tap on empty canvas → commit in-progress stroke as a dot
+          drawing.endStroke(activeTool as 'pencil' | 'brush' | 'highlighter', activeColor, strokeWidth, 1)
+          setSelectedStrokeId(null)
+          drawing.selectedStrokeId.current = null
+          scheduleSave()
+        }
         return
       }
 
@@ -440,7 +492,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   const cursor = isDragging
     ? 'grabbing'
-    : selectedStrokeId
+    : (hoverStrokeId || selectedStrokeId)
       ? 'grab'
       : (shiftHeld || activeTool === 'eraser')
         ? 'cell'
@@ -474,6 +526,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         onShare={handleShare}
         shareState={shareState}
         expiresAt={expiresAt}
+        showTutorial={showTutorial}
       />
 
       {/* Canvas area */}
@@ -491,6 +544,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerLeave={() => { hoverStrokeIdRef.current = null; setHoverStrokeId(null) }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

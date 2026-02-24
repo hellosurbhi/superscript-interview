@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { DrawTool } from '@/types/drawing'
 import { strokeWidthToFontSize } from '@/types/drawing'
 
@@ -14,19 +14,23 @@ interface LeftToolbarProps {
   onShare: () => void
   shareState: 'idle' | 'saving' | 'copied' | 'error'
   expiresAt: number | null
+  showTutorial: boolean
 }
 
 const SIDEBAR_TOOLS: Array<{
   id: DrawTool
   icon: string
   label: string
+  shortcut: string
   comingSoon?: boolean
 }> = [
-  { id: 'pencil', icon: '✏', label: 'Pencil' },
-  { id: 'eraser', icon: '◻', label: 'Eraser' },
-  { id: 'text', icon: 'T', label: 'Text (T)' },
-  { id: 'animate', icon: '⚡', label: 'Animate' },
+  { id: 'pencil',  icon: '✏', label: 'Pencil',  shortcut: 'P  ·  ⌘⌥ toggle' },
+  { id: 'eraser',  icon: '◻', label: 'Eraser',  shortcut: 'E  ·  ⌘⌥  ·  ⇧ hold' },
+  { id: 'text',    icon: 'T',  label: 'Text',    shortcut: 'T' },
+  { id: 'animate', icon: '⚡', label: 'Animate', shortcut: '' },
 ]
+
+type HoverTarget = DrawTool | 'undo' | 'clear' | 'share' | null
 
 export default function LeftToolbar({
   activeTool,
@@ -38,11 +42,22 @@ export default function LeftToolbar({
   onShare,
   shareState,
   expiresAt,
+  showTutorial,
 }: LeftToolbarProps) {
+  const [hoveredTarget, setHoveredTarget] = useState<HoverTarget>(null)
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if ((e.target as HTMLElement)?.isContentEditable) return
+
+      // ⌘⌥ (or Ctrl+Alt) → toggle pencil ↔ eraser
+      if ((e.metaKey || e.ctrlKey) && e.altKey) {
+        e.preventDefault()
+        onToolChange(activeTool === 'eraser' ? 'pencil' : 'eraser')
+        return
+      }
+
       if (e.key === 'p' || e.key === 'P') onToolChange('pencil')
       if (e.key === 'e' || e.key === 'E') onToolChange('eraser')
       if (e.key === 't' || e.key === 'T') onToolChange('text')
@@ -55,7 +70,10 @@ export default function LeftToolbar({
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onToolChange, onUndo, strokeWidth, onStrokeWidthChange])
+  }, [activeTool, onToolChange, onUndo, strokeWidth, onStrokeWidthChange])
+
+  const showLabel = (target: HoverTarget) =>
+    hoveredTarget === target || showTutorial
 
   return (
     <div
@@ -65,6 +83,7 @@ export default function LeftToolbar({
         borderRight: '1px solid rgba(0, 245, 255, 0.10)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
+        overflow: 'visible',
       }}
     >
       {/* Brand mark */}
@@ -79,14 +98,16 @@ export default function LeftToolbar({
       <div className="w-6 h-px bg-white/10" />
 
       {/* Tool buttons */}
-      {SIDEBAR_TOOLS.map(({ id, icon, label, comingSoon }) => {
+      {SIDEBAR_TOOLS.map(({ id, icon, label, shortcut, comingSoon }) => {
         const isActive = activeTool === id
         return (
-          <div key={id} className="flex flex-col items-center w-full gap-0.5">
+          <div key={id} className="relative flex flex-col items-center w-full gap-0.5">
             <button
               onClick={() => !comingSoon && onToolChange(id)}
               title={comingSoon ? `${label} — Coming Soon` : label}
               disabled={comingSoon}
+              onMouseEnter={() => setHoveredTarget(id)}
+              onMouseLeave={() => setHoveredTarget(null)}
               className={[
                 'relative flex items-center justify-center w-10 h-10 rounded transition-all duration-150 text-base select-none',
                 comingSoon
@@ -125,13 +146,34 @@ export default function LeftToolbar({
                     value={strokeWidth}
                     onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
                     className="accent-[#00f5ff] cursor-pointer"
-                    style={{
-                      transform: 'rotate(-90deg)',
-                      width: '72px',
-                    }}
+                    style={{ transform: 'rotate(-90deg)', width: '72px' }}
                     title="Stroke thickness"
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Tooltip — shown on hover or during tutorial */}
+            {!comingSoon && showLabel(id) && (
+              <div
+                className="absolute left-full ml-3 top-0 z-[60] flex flex-col gap-0.5 pointer-events-none"
+                style={{ animation: showTutorial ? 'none' : undefined }}
+              >
+                <span
+                  className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
+                  style={{
+                    background: 'rgba(13,13,26,0.97)',
+                    border: '1px solid rgba(0,245,255,0.2)',
+                    boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+                  }}
+                >
+                  {label}
+                </span>
+                {shortcut && (
+                  <span className="font-pixel text-[5px] text-[#00f5ff]/60 whitespace-nowrap px-1">
+                    {shortcut}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -145,10 +187,12 @@ export default function LeftToolbar({
       <div className="w-6 h-px bg-white/10" />
 
       {/* Share */}
-      <div className="flex flex-col items-center gap-0.5">
+      <div className="relative flex flex-col items-center gap-0.5">
         <button
           onClick={onShare}
           disabled={shareState === 'saving'}
+          onMouseEnter={() => setHoveredTarget('share')}
+          onMouseLeave={() => setHoveredTarget(null)}
           title={
             shareState === 'copied' ? 'Link copied!' :
             shareState === 'error'  ? 'Error — try again' :
@@ -173,25 +217,79 @@ export default function LeftToolbar({
             {Math.max(0, Math.ceil((expiresAt - Date.now()) / 3_600_000))}h
           </span>
         )}
+
+        {showLabel('share') && (
+          <div className="absolute left-full ml-3 top-0 z-[60] pointer-events-none">
+            <span
+              className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
+              style={{
+                background: 'rgba(13,13,26,0.97)',
+                border: '1px solid rgba(0,245,255,0.2)',
+                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+              }}
+            >
+              Share  ·  ↗
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Undo */}
-      <button
-        onClick={onUndo}
-        title="Undo (⌘Z)"
-        className="flex items-center justify-center w-10 h-10 rounded border border-white/10 text-white/60 hover:border-white/30 hover:text-white/90 hover:bg-white/5 transition-all duration-150 text-sm"
-      >
-        ↩
-      </button>
+      <div className="relative">
+        <button
+          onClick={onUndo}
+          onMouseEnter={() => setHoveredTarget('undo')}
+          onMouseLeave={() => setHoveredTarget(null)}
+          title="Undo (⌘Z)"
+          className="flex items-center justify-center w-10 h-10 rounded border border-white/10 text-white/60 hover:border-white/30 hover:text-white/90 hover:bg-white/5 transition-all duration-150 text-sm"
+        >
+          ↩
+        </button>
+        {showLabel('undo') && (
+          <div className="absolute left-full ml-3 top-0 z-[60] flex flex-col gap-0.5 pointer-events-none">
+            <span
+              className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
+              style={{
+                background: 'rgba(13,13,26,0.97)',
+                border: '1px solid rgba(0,245,255,0.2)',
+                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+              }}
+            >
+              Undo
+            </span>
+            <span className="font-pixel text-[5px] text-[#00f5ff]/60 whitespace-nowrap px-1">
+              ⌘Z  ·  Delete (no sel.)
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Clear */}
-      <button
-        onClick={onClear}
-        title="Clear canvas"
-        className="flex items-center justify-center w-10 h-10 rounded border border-white/10 text-white/60 hover:border-[#ff006e]/60 hover:text-[#ff006e] hover:bg-[#ff006e]/10 transition-all duration-150 text-sm"
-      >
-        ✕
-      </button>
+      <div className="relative">
+        <button
+          onClick={onClear}
+          onMouseEnter={() => setHoveredTarget('clear')}
+          onMouseLeave={() => setHoveredTarget(null)}
+          title="Clear canvas"
+          className="flex items-center justify-center w-10 h-10 rounded border border-white/10 text-white/60 hover:border-[#ff006e]/60 hover:text-[#ff006e] hover:bg-[#ff006e]/10 transition-all duration-150 text-sm"
+        >
+          ✕
+        </button>
+        {showLabel('clear') && (
+          <div className="absolute left-full ml-3 top-0 z-[60] pointer-events-none">
+            <span
+              className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
+              style={{
+                background: 'rgba(13,13,26,0.97)',
+                border: '1px solid rgba(255,0,110,0.2)',
+                boxShadow: '0 0 8px rgba(255,0,110,0.1)',
+              }}
+            >
+              Clear canvas
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
