@@ -12,26 +12,33 @@ const DrawingCanvas = dynamic(
 
 type LoadState = 'loading' | 'found' | 'expired'
 
+interface SharedData {
+  id: string
+  strokes: CompletedStroke[]
+  animation_code: string | null
+  animation_prompt: string | null
+}
+
 export default function SharedDrawPage() {
   const params = useParams()
-  const id = params.id as string
+  const token = params.token as string
 
   const [loadState, setLoadState] = useState<LoadState>('loading')
-  const [strokes, setStrokes] = useState<CompletedStroke[]>([])
+  const [shared, setShared] = useState<SharedData | null>(null)
 
   useEffect(() => {
-    fetch(`/api/drawings/${id}`)
+    fetch(`/api/drawings/${token}`)
       .then(async (res) => {
         if (!res.ok) {
           setLoadState('expired')
           return
         }
-        const data = await res.json() as { strokes: CompletedStroke[] }
-        setStrokes(data.strokes ?? [])
+        const data = await res.json() as SharedData
+        setShared(data)
         setLoadState('found')
       })
       .catch(() => setLoadState('expired'))
-  }, [id])
+  }, [token])
 
   if (loadState === 'loading') {
     return (
@@ -59,7 +66,12 @@ export default function SharedDrawPage() {
 
   return (
     <main className="w-screen h-screen overflow-hidden bg-[#111]">
-      <DrawingCanvas drawingId={id} initialStrokes={strokes} />
+      <DrawingCanvas
+        drawingId={shared!.id}
+        initialStrokes={shared!.strokes}
+        initialAnimationCode={shared!.animation_code ?? undefined}
+        initialAnimationPrompt={shared!.animation_prompt ?? undefined}
+      />
     </main>
   )
 }

@@ -36,27 +36,35 @@ tags:
 - `/Users/surbhi/workspace/suprscript-interview/src/app/draw/page.tsx`
 - `/Users/surbhi/workspace/suprscript-interview/CHANGELOG.md`
 - `/Users/surbhi/.claude/projects/-Users-surbhi-workspace-suprscript-interview/memory/MEMORY.md`
+- `/Users/surbhi/workspace/suprscript-interview/src/components/canvas/LeftToolbar.tsx`
+- `/Users/surbhi/workspace/suprscript-interview/src/lib/supabase.ts`
+- `/Users/surbhi/workspace/suprscript-interview/src/lib/drawings.ts`
+- `/Users/surbhi/workspace/suprscript-interview/src/app/api/drawings/route.ts`
+- `/Users/surbhi/workspace/suprscript-interview/src/app/api/drawings/[id]/route.ts`
+- `/Users/surbhi/workspace/suprscript-interview/src/app/draw/[id]/page.tsx`
 
 ## Issues
 - `to-create`
 - `to-zoom`
 - `to-pan`
 - `re-renders`
+- `re-running`
 
 ## Tool Usage
 
 | Tool | Count |
 |------|-------|
-| Bash | 14 |
-| Edit | 4 |
-| ExitPlanMode | 1 |
-| Read | 6 |
-| Task | 3 |
-| ToolSearch | 1 |
-| Write | 17 |
+| AskUserQuestion | 1 |
+| Bash | 19 |
+| Edit | 17 |
+| ExitPlanMode | 2 |
+| Read | 12 |
+| Task | 4 |
+| ToolSearch | 2 |
+| Write | 24 |
 
 ## Tokens
 
 - **Input:** 0
 - **Output:** 0
-- **Total:** ~303371 (estimated)
+- **Total:** ~488183 (estimated)

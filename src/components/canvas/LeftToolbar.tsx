@@ -186,54 +186,6 @@ export default function LeftToolbar({
       {/* Divider */}
       <div className="w-6 h-px bg-white/10" />
 
-      {/* Share */}
-      <div className="relative flex flex-col items-center gap-0.5">
-        <button
-          onClick={onShare}
-          disabled={shareState === 'saving'}
-          onMouseEnter={() => setHoveredTarget('share')}
-          onMouseLeave={() => setHoveredTarget(null)}
-          title={
-            shareState === 'copied' ? 'Link copied!' :
-            shareState === 'error'  ? 'Error — try again' :
-            'Share drawing'
-          }
-          className={[
-            'flex items-center justify-center w-10 h-10 rounded border transition-all duration-150 text-sm',
-            shareState === 'copied'
-              ? 'border-[#06d6a0]/60 text-[#06d6a0] bg-[#06d6a0]/10'
-              : shareState === 'error'
-                ? 'border-[#ff006e]/60 text-[#ff006e] bg-[#ff006e]/10'
-                : shareState === 'saving'
-                  ? 'border-white/10 text-white/30 animate-pulse cursor-not-allowed'
-                  : 'border-white/10 text-white/60 hover:border-[#00f5ff]/50 hover:text-[#00f5ff] hover:bg-[#00f5ff]/5',
-          ].join(' ')}
-        >
-          {shareState === 'saving' ? '…' : shareState === 'copied' ? '✓' : shareState === 'error' ? '✕' : '↗'}
-        </button>
-
-        {expiresAt && shareState !== 'error' && (
-          <span className="font-pixel text-[4px] text-[#00f5ff]/40 leading-none">
-            {Math.max(0, Math.ceil((expiresAt - Date.now()) / 3_600_000))}h
-          </span>
-        )}
-
-        {showLabel('share') && (
-          <div className="absolute left-full ml-3 top-0 z-[60] pointer-events-none">
-            <span
-              className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
-              style={{
-                background: 'rgba(13,13,26,0.97)',
-                border: '1px solid rgba(0,245,255,0.2)',
-                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
-              }}
-            >
-              Share  ·  ↗
-            </span>
-          </div>
-        )}
-      </div>
-
       {/* Undo */}
       <div className="relative">
         <button
@@ -286,6 +238,51 @@ export default function LeftToolbar({
               }}
             >
               Clear canvas
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Share — very bottom */}
+      <div className="relative flex flex-col items-center gap-0.5">
+        <button
+          onClick={onShare}
+          disabled={shareState === 'saving'}
+          onMouseEnter={() => setHoveredTarget('share')}
+          onMouseLeave={() => setHoveredTarget(null)}
+          title={
+            shareState === 'error'  ? 'Error — try again' :
+            'Share drawing'
+          }
+          className={[
+            'flex items-center justify-center w-10 h-10 rounded border transition-all duration-150 text-sm',
+            shareState === 'error'
+              ? 'border-[#ff006e]/60 text-[#ff006e] bg-[#ff006e]/10'
+              : shareState === 'saving'
+                ? 'border-white/10 text-white/30 animate-pulse cursor-not-allowed'
+                : 'border-white/10 text-white/60 hover:border-[#00f5ff]/50 hover:text-[#00f5ff] hover:bg-[#00f5ff]/5',
+          ].join(' ')}
+        >
+          {shareState === 'saving' ? '…' : shareState === 'error' ? '✕' : '↗'}
+        </button>
+
+        {expiresAt && shareState !== 'error' && (
+          <span className="font-pixel text-[4px] text-[#00f5ff]/40 leading-none">
+            {Math.max(0, Math.ceil((expiresAt - Date.now()) / 3_600_000))}h
+          </span>
+        )}
+
+        {showLabel('share') && (
+          <div className="absolute left-full ml-3 top-0 z-[60] pointer-events-none">
+            <span
+              className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
+              style={{
+                background: 'rgba(13,13,26,0.97)',
+                border: '1px solid rgba(0,245,255,0.2)',
+                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+              }}
+            >
+              Share  ·  ↗
             </span>
           </div>
         )}

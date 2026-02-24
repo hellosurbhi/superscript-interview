@@ -6,6 +6,7 @@ import { strokeWidthToFontSize } from '@/types/drawing'
 import { useDrawing } from '@/hooks/useDrawing'
 import LeftToolbar from './LeftToolbar'
 import AnimateOverlay from './AnimateOverlay'
+import ShareModal from './ShareModal'
 
 const TAP_MOVE_THRESHOLD = 5
 const TAP_TIME_MS = 200
@@ -20,9 +21,11 @@ interface TextOverlayState {
 interface DrawingCanvasProps {
   drawingId?: string
   initialStrokes?: CompletedStroke[]
+  initialAnimationCode?: string
+  initialAnimationPrompt?: string
 }
 
-export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanvasProps = {}) {
+export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimationCode, initialAnimationPrompt }: DrawingCanvasProps = {}) {
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null)
   const haloCanvasRef = useRef<HTMLCanvasElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -69,6 +72,14 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     }
   }, [activeTool])
 
+  // Auto-play animation when viewing a shared link that has animation code
+  useEffect(() => {
+    if (initialAnimationCode) {
+      setActiveTool('animate')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Text tool overlay
   const [textOverlay, setTextOverlay] = useState<TextOverlayState | null>(null)
   const textOverlayRef = useRef<HTMLDivElement>(null)
@@ -76,9 +87,12 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   // Share / save state
   const drawingIdRef = useRef<string | null>(drawingId ?? null)
+  const shareTokenRef = useRef<string | null>(null)
+  const shareUrlRef = useRef<string | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [shareState, setShareState] = useState<'idle' | 'saving' | 'copied' | 'error'>('idle')
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
+  const [shareModal, setShareModal] = useState<{ url: string } | null>(null)
 
   // Interaction tracking refs
   const hasMovedRef = useRef(false)
@@ -443,25 +457,50 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     setSelectedStrokeId(null)
   }, [drawing])
 
-  const handleShare = useCallback(async () => {
+  const handleShare = useCallback(async (animationCode?: string, animationPrompt?: string) => {
     if (shareState === 'saving') return
+
+    // If already shared, just open the modal with existing URL
+    if (shareUrlRef.current && drawingIdRef.current) {
+      // If new animation data came in, save it via PUT
+      if (animationCode) {
+        await fetch(`/api/drawings/${drawingIdRef.current}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ strokes: drawing.getStrokes(), animation_code: animationCode, animation_prompt: animationPrompt ?? null }),
+        }).catch(() => {})
+      }
+      setShareModal({ url: shareUrlRef.current })
+      return
+    }
+
     setShareState('saving')
     try {
-      if (!drawingIdRef.current) {
-        const res = await fetch('/api/drawings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ strokes: drawing.getStrokes() }),
-        })
-        if (!res.ok) throw new Error('create_failed')
-        const { id, expiresAt: exp } = await res.json() as { id: string; expiresAt: string }
-        drawingIdRef.current = id
-        setExpiresAt(new Date(exp).getTime())
-        window.history.replaceState(null, '', `/draw/${id}`)
+      const canvasImage = drawingCanvasRef.current?.toDataURL('image/png') ?? null
+      const res = await fetch('/api/drawings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          strokes: drawing.getStrokes(),
+          canvas_image: canvasImage,
+          animation_code: animationCode ?? null,
+          animation_prompt: animationPrompt ?? null,
+        }),
+      })
+      if (!res.ok) throw new Error('create_failed')
+      const { id, share_token, share_url, expiresAt: exp } = await res.json() as {
+        id: string
+        share_token: string
+        share_url: string
+        expiresAt: string
       }
-      await navigator.clipboard.writeText(window.location.href)
-      setShareState('copied')
-      setTimeout(() => setShareState('idle'), 2000)
+      drawingIdRef.current = id
+      shareTokenRef.current = share_token
+      shareUrlRef.current = share_url
+      setExpiresAt(new Date(exp).getTime())
+      window.history.replaceState(null, '', `/share/${share_token}`)
+      setShareState('idle')
+      setShareModal({ url: share_url })
     } catch {
       setShareState('error')
       setTimeout(() => setShareState('idle'), 2000)
@@ -487,6 +526,11 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   return (
     <div className="fixed inset-0 bg-[#f5f5f0] overflow-hidden">
+      {/* Share modal */}
+      {shareModal && (
+        <ShareModal shareUrl={shareModal.url} onClose={() => setShareModal(null)} />
+      )}
+
       {/* Animate overlay — covers everything when animate tool is active */}
       {activeTool === 'animate' && animateSnapshot && (
         <AnimateOverlay
@@ -495,6 +539,8 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
           canvasHeight={animateSnapshot.height}
           strokes={drawing.getStrokes()}
           onBack={() => setActiveTool('pencil')}
+          onShare={(code, prompt) => handleShare(code, prompt)}
+          preloadedCode={initialAnimationCode}
         />
       )}
 

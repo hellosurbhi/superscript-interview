@@ -23,6 +23,8 @@ interface AnimateOverlayProps {
   canvasHeight: number
   strokes: CompletedStroke[]
   onBack: () => void
+  onShare?: (animationCode: string, animationPrompt: string) => void
+  preloadedCode?: string
 }
 
 const ANIM_DURATION = 7000
@@ -97,8 +99,12 @@ export default function AnimateOverlay({
   canvasHeight,
   strokes,
   onBack,
+  onShare,
+  preloadedCode,
 }: AnimateOverlayProps) {
-  const [phase, setPhase] = useState<Phase>({ name: 'idle' })
+  const [phase, setPhase] = useState<Phase>(
+    preloadedCode ? { name: 'playing', code: preloadedCode, isPaused: false } : { name: 'idle' }
+  )
   const [promptText, setPromptText] = useState('')
 
   // Playing phase refs
@@ -430,6 +436,17 @@ export default function AnimateOverlay({
 
         {/* Regenerate */}
         <ControlButton onClick={handleRegenerate} label="REDO" icon="⚡" />
+
+        {onShare && (
+          <>
+            <div className="w-px h-5 bg-white/10 mx-1" />
+            <ControlButton
+              onClick={() => onShare(phase.code, promptText)}
+              label="SHARE"
+              icon="↗"
+            />
+          </>
+        )}
       </div>
 
       {/* Progress bar */}
