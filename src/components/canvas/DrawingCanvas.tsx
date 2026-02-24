@@ -1,11 +1,16 @@
 'use client'
 
 import { useRef, useState, useCallback, useEffect } from 'react'
-import type { DrawTool, CanvasTransform } from '@/types/drawing'
+import type { DrawTool, CanvasTransform, CompletedStroke } from '@/types/drawing'
 import { useDrawing } from '@/hooks/useDrawing'
 import LeftToolbar from './LeftToolbar'
 
-export default function DrawingCanvas() {
+interface DrawingCanvasProps {
+  drawingId?: string
+  initialStrokes?: CompletedStroke[]
+}
+
+export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanvasProps = {}) {
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
@@ -15,6 +20,12 @@ export default function DrawingCanvas() {
   const [transform, setTransform] = useState<CanvasTransform>({ scale: 1, translateX: 0, translateY: 0 })
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null)
 
+  // Share / save state
+  const drawingIdRef = useRef<string | null>(drawingId ?? null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [shareState, setShareState] = useState<'idle' | 'saving' | 'copied' | 'error'>('idle')
+  const [expiresAt, setExpiresAt] = useState<number | null>(null)
+
   // Eraser click-vs-drag tracking
   const eraserHasMovedRef = useRef(false)
   const eraserDownPosRef = useRef<{ x: number; y: number } | null>(null)
@@ -23,10 +34,11 @@ export default function DrawingCanvas() {
   // Pinch state
   const pinchRef = useRef<{ dist: number } | null>(null)
 
-  const drawing = useDrawing(drawingCanvasRef)
+  const drawing = useDrawing(drawingCanvasRef, initialStrokes)
 
-  // Resize canvas to match container
+  // Resize canvas to match container; repaint initial strokes after first resize
   useEffect(() => {
+    let painted = false
     const resize = () => {
       const wrapper = wrapperRef.current
       if (!wrapper) return
@@ -36,11 +48,17 @@ export default function DrawingCanvas() {
         drawingCanvasRef.current.width = w
         drawingCanvasRef.current.height = h
       }
+      // Paint once after canvas has real dimensions
+      if (!painted && initialStrokes?.length) {
+        painted = true
+        drawing.redrawFromHistory()
+      }
     }
     resize()
     const ro = new ResizeObserver(resize)
     if (wrapperRef.current) ro.observe(wrapperRef.current)
     return () => ro.disconnect()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Delete key handler for eraser-selected stroke
@@ -135,6 +153,22 @@ export default function DrawingCanvas() {
     [activeTool, drawing, getEventPos, transform]
   )
 
+  const scheduleSave = useCallback(() => {
+    if (!drawingIdRef.current) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch(`/api/drawings/${drawingIdRef.current}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ strokes: drawing.getStrokes() }),
+        })
+      } catch {
+        // silent — auto-save failure is non-critical
+      }
+    }, 1500)
+  }, [drawing])
+
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.isPrimary === false) return
@@ -142,6 +176,7 @@ export default function DrawingCanvas() {
       if (activeTool === 'eraser') {
         if (eraserHasMovedRef.current) {
           drawing.endStroke('eraser', activeColor, strokeWidth, 1)
+          scheduleSave()
         } else {
           drawing.cancelCurrentStroke()
           const pos = getEventPos(e)
@@ -155,8 +190,9 @@ export default function DrawingCanvas() {
 
       const tool = activeTool as 'pencil' | 'brush' | 'highlighter'
       drawing.endStroke(tool, activeColor, strokeWidth, 1)
+      scheduleSave()
     },
-    [activeTool, activeColor, strokeWidth, drawing, getEventPos]
+    [activeTool, activeColor, strokeWidth, drawing, getEventPos, scheduleSave]
   )
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -210,6 +246,31 @@ export default function DrawingCanvas() {
     setSelectedStrokeId(null)
   }, [drawing])
 
+  const handleShare = useCallback(async () => {
+    if (shareState === 'saving') return
+    setShareState('saving')
+    try {
+      if (!drawingIdRef.current) {
+        const res = await fetch('/api/drawings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ strokes: drawing.getStrokes() }),
+        })
+        if (!res.ok) throw new Error('create_failed')
+        const { id, expiresAt: exp } = await res.json() as { id: string; expiresAt: string }
+        drawingIdRef.current = id
+        setExpiresAt(new Date(exp).getTime())
+        window.history.replaceState(null, '', `/draw/${id}`)
+      }
+      await navigator.clipboard.writeText(window.location.href)
+      setShareState('copied')
+      setTimeout(() => setShareState('idle'), 2000)
+    } catch {
+      setShareState('error')
+      setTimeout(() => setShareState('idle'), 2000)
+    }
+  }, [drawing, shareState])
+
   const canvasStyle = {
     transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
     transformOrigin: '0 0',
@@ -231,6 +292,9 @@ export default function DrawingCanvas() {
         onStrokeWidthChange={setStrokeWidth}
         onUndo={drawing.undoLast}
         onClear={handleClear}
+        onShare={handleShare}
+        shareState={shareState}
+        expiresAt={expiresAt}
       />
 
       {/* Canvas area */}

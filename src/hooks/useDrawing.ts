@@ -92,11 +92,12 @@ function drawStrokeToCtx(
 }
 
 export function useDrawing(
-  canvasRef: React.RefObject<HTMLCanvasElement | null>
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  initialStrokes?: CompletedStroke[]
 ) {
   const isDrawingRef = useRef(false)
   const currentPointsRef = useRef<StrokePoint[]>([])
-  const completedStrokesRef = useRef<CompletedStroke[]>([])
+  const completedStrokesRef = useRef<CompletedStroke[]>(initialStrokes ?? [])
   const animFrameRef = useRef<number | null>(null)
   const selectedStrokeIdRef = useRef<string | null>(null)
 
@@ -292,6 +293,61 @@ export function useDrawing(
     if (ctx) redrawAll(ctx, completedStrokesRef.current)
   }, [canvasRef, redrawAll])
 
+  const drawSelectionHalo = useCallback(
+    (haloCtx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
+      haloCtx.clearRect(0, 0, canvasWidth, canvasHeight)
+
+      const id = selectedStrokeIdRef.current
+      if (!id) return
+
+      const stroke = completedStrokesRef.current.find((s) => s.id === id)
+      if (!stroke) return
+
+      haloCtx.save()
+
+      if (stroke.points.length === 1) {
+        // Single dot: draw a glowing ring around it
+        haloCtx.shadowColor = 'rgba(255, 120, 0, 0.95)'
+        haloCtx.shadowBlur = 16
+        haloCtx.strokeStyle = 'rgba(255, 140, 0, 0.8)'
+        haloCtx.lineWidth = 2.5
+        haloCtx.beginPath()
+        haloCtx.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2 + 5, 0, Math.PI * 2)
+        haloCtx.stroke()
+      } else {
+        // Multi-point stroke: recompute path with size+8 so halo wraps outside the original
+        const opts = {
+          ...TOOL_OPTIONS[stroke.tool],
+          size: stroke.size + 8,
+          simulatePressure: true,
+        }
+        const outlinePoints = getStroke(
+          stroke.points.map((p) => [p.x, p.y, p.pressure]),
+          opts
+        )
+        const pathData = getSvgPathFromStroke(outlinePoints)
+        const path = new Path2D(pathData)
+
+        haloCtx.shadowColor = 'rgba(255, 130, 0, 0.85)'
+        haloCtx.shadowBlur = 18
+        haloCtx.fillStyle = 'rgba(255, 140, 0, 0.18)'
+        haloCtx.fill(path)
+      }
+
+      haloCtx.restore()
+    },
+    [] // reads refs directly — no reactive deps needed
+  )
+
+  const getStrokes = useCallback(() => completedStrokesRef.current, [])
+
+  const redrawFromHistory = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (ctx) redrawAll(ctx, completedStrokesRef.current)
+  }, [canvasRef, redrawAll])
+
   return {
     startStroke,
     continueStroke,
@@ -299,6 +355,9 @@ export function useDrawing(
     cancelCurrentStroke,
     clearCanvas,
     undoLast,
+    getStrokes,
+    redrawFromHistory,
+    drawSelectionHalo,
     isDrawing: isDrawingRef,
     selectStrokeAtPoint,
     deleteSelectedStroke,
