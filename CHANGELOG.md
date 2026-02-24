@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## feat: add /enhancements page and landing link
+**Date:** 2026-02-24
+**Commit:** 3114dd8
+
+### What changed
+Added a `/enhancements` product roadmap page showcasing 5 planned features, plus a subtle "what's next →" link in the landing page's bottom-left corner.
+
+### Files affected
+- `src/app/enhancements/page.tsx` — new server component
+- `src/components/welcome/WelcomeCanvas.tsx` — added nav link
+
+### enhancements/page.tsx details
+- Server component (no `'use client'`), purely static with CSS hover
+- Warm gradient background matching WelcomeCanvas (`#fff0f7 → #ffd6ea`)
+- 5 feature cards: Multiplayer Canvas, AI Style Transfer, Animation Timeline, Template Library, Export Pipeline
+- Each card: num/tag row, emoji icon, pixel-font title, muted description
+- CSS Grid `auto-fill minmax(260px,1fr)` — responsively stacks to single column on mobile
+- Scrolling fix: `position:fixed; inset:0; overflow-y:auto` on `<main>` bypasses the global `html,body { overflow:hidden }` rule in globals.css
+- Footer: `← BACK TO DRAWING` link to `/`
+
+### WelcomeCanvas.tsx changes
+- Bottom-left corner now stacks `v0.1 2026` above `what's next →`
+- `e.stopPropagation()` on the anchor prevents the click from bubbling to the outer `div onClick={onEnter}` which would have dismissed the welcome screen instead of navigating
+
+---
+
 ## feat: full pink/magenta retheme — zero cyan/blue remaining
 **Date:** 2026-02-24
 **Commit:** 27da112
