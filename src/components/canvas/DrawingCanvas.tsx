@@ -5,6 +5,9 @@ import type { DrawTool, CanvasTransform, CompletedStroke } from '@/types/drawing
 import { useDrawing } from '@/hooks/useDrawing'
 import LeftToolbar from './LeftToolbar'
 
+const TAP_MOVE_THRESHOLD = 5
+const TAP_TIME_MS = 200
+
 interface DrawingCanvasProps {
   drawingId?: string
   initialStrokes?: CompletedStroke[]
@@ -20,6 +23,8 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
   const [activeColor] = useState('#1a1a2e')
   const [transform, setTransform] = useState<CanvasTransform>({ scale: 1, translateX: 0, translateY: 0 })
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null)
+  const [shiftHeld, setShiftHeld] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   // Share / save state
   const drawingIdRef = useRef<string | null>(drawingId ?? null)
@@ -27,10 +32,12 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
   const [shareState, setShareState] = useState<'idle' | 'saving' | 'copied' | 'error'>('idle')
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
 
-  // Eraser click-vs-drag tracking
-  const eraserHasMovedRef = useRef(false)
-  const eraserDownPosRef = useRef<{ x: number; y: number } | null>(null)
-  const ERASER_MOVE_THRESHOLD = 5
+  // Interaction tracking refs
+  const hasMovedRef = useRef(false)
+  const downPosRef = useRef<{ x: number; y: number } | null>(null)
+  const downTimeRef = useRef<number>(0)
+  const isDraggingRef = useRef(false)
+  const dragLastPosRef = useRef<{ x: number; y: number } | null>(null)
 
   // Pinch state
   const pinchRef = useRef<{ dist: number } | null>(null)
@@ -74,18 +81,34 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     drawing.drawSelectionHalo(haloCtx, haloCanvas.width, haloCanvas.height)
   }, [selectedStrokeId, drawing])
 
-  // Delete key handler for eraser-selected stroke
+  // Delete key — works in any tool mode
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if ((e.key === 'Delete' || e.key === 'Backspace') && activeTool === 'eraser' && selectedStrokeId) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedStrokeId) {
         drawing.deleteSelectedStroke()
         setSelectedStrokeId(null)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [activeTool, selectedStrokeId, drawing])
+  }, [selectedStrokeId, drawing])
+
+  // Shift key tracking for temporary eraser mode
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setShiftHeld(true)
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setShiftHeld(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+    }
+  }, [])
 
   const getEventPos = useCallback(
     (e: PointerEvent | React.PointerEvent) => {
@@ -100,7 +123,6 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     [transform]
   )
 
-  // Declared before handlePointerUp to avoid hoisting errors
   const scheduleSave = useCallback(() => {
     if (!drawingIdRef.current) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -124,86 +146,125 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
       e.currentTarget.setPointerCapture(e.pointerId)
 
-      // Clear selection on non-eraser tool use
-      if (activeTool !== 'eraser') {
-        setSelectedStrokeId(null)
-        drawing.selectedStrokeId.current = null
-      }
+      const pos = getEventPos(e)
+      downPosRef.current = pos
+      downTimeRef.current = Date.now()
+      hasMovedRef.current = false
+      isDraggingRef.current = false
 
-      if (activeTool === 'eraser') {
-        const pos = getEventPos(e)
-        eraserHasMovedRef.current = false
-        eraserDownPosRef.current = { x: pos.x, y: pos.y }
-        drawing.startStroke(e.nativeEvent, 'eraser', activeColor, strokeWidth, 1, {
-          scale: transform.scale,
-          tx: transform.translateX,
-          ty: transform.translateY,
-        })
+      const transformArgs = { scale: transform.scale, tx: transform.translateX, ty: transform.translateY }
+
+      // Shift or explicit eraser → start erase stroke immediately
+      if (e.shiftKey || activeTool === 'eraser') {
+        drawing.startStroke(e.nativeEvent, 'eraser', activeColor, strokeWidth, 1, transformArgs)
         return
       }
 
-      const tool = activeTool as 'pencil' | 'brush' | 'highlighter'
-      drawing.startStroke(e.nativeEvent, tool, activeColor, strokeWidth, 1, {
-        scale: transform.scale,
-        tx: transform.translateX,
-        ty: transform.translateY,
-      })
+      // If something is selected and we're clicking ON it → begin drag
+      if (selectedStrokeId && drawing.isPointOnStroke(pos.x, pos.y, selectedStrokeId)) {
+        isDraggingRef.current = true
+        setIsDragging(true)
+        dragLastPosRef.current = pos
+        return
+      }
+
+      // Otherwise: start draw stroke (may be cancelled on tap)
+      setSelectedStrokeId(null)
+      drawing.selectedStrokeId.current = null
+      drawing.startStroke(
+        e.nativeEvent,
+        activeTool as 'pencil' | 'brush' | 'highlighter',
+        activeColor,
+        strokeWidth,
+        1,
+        transformArgs
+      )
     },
-    [activeTool, activeColor, strokeWidth, drawing, getEventPos, transform]
+    [activeTool, activeColor, strokeWidth, drawing, getEventPos, transform, selectedStrokeId]
   )
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.isPrimary === false) return
-      if (!drawing.isDrawing.current) return
 
-      if (activeTool === 'eraser') {
-        const pos = getEventPos(e)
-        const down = eraserDownPosRef.current
-        if (down) {
-          const dist = Math.hypot(pos.x - down.x, pos.y - down.y)
-          if (dist > ERASER_MOVE_THRESHOLD) eraserHasMovedRef.current = true
+      const pos = getEventPos(e)
+
+      // Track movement for tap detection
+      if (downPosRef.current && !hasMovedRef.current) {
+        const dist = Math.hypot(pos.x - downPosRef.current.x, pos.y - downPosRef.current.y)
+        if (dist > TAP_MOVE_THRESHOLD) hasMovedRef.current = true
+      }
+
+      // Drag: move selected stroke
+      if (isDraggingRef.current && selectedStrokeId && dragLastPosRef.current) {
+        const dx = pos.x - dragLastPosRef.current.x
+        const dy = pos.y - dragLastPosRef.current.y
+        drawing.moveStroke(selectedStrokeId, dx, dy)
+        // Redraw halo at new position
+        const haloCanvas = haloCanvasRef.current
+        if (haloCanvas) {
+          const haloCtx = haloCanvas.getContext('2d')
+          if (haloCtx) drawing.drawSelectionHalo(haloCtx, haloCanvas.width, haloCanvas.height)
         }
-        if (eraserHasMovedRef.current) {
-          drawing.continueStroke(e.nativeEvent, {
-            scale: transform.scale,
-            tx: transform.translateX,
-            ty: transform.translateY,
-          })
-        }
+        dragLastPosRef.current = pos
         return
       }
 
-      drawing.continueStroke(e.nativeEvent, {
-        scale: transform.scale,
-        tx: transform.translateX,
-        ty: transform.translateY,
-      })
+      if (!drawing.isDrawing.current) return
+
+      const transformArgs = { scale: transform.scale, tx: transform.translateX, ty: transform.translateY }
+
+      // Eraser stroke (shift or explicit eraser)
+      if ((e.shiftKey || activeTool === 'eraser') && drawing.isDrawing.current) {
+        drawing.continueStroke(e.nativeEvent, transformArgs)
+        return
+      }
+
+      drawing.continueStroke(e.nativeEvent, transformArgs)
     },
-    [activeTool, drawing, getEventPos, transform]
+    [activeTool, drawing, getEventPos, transform, selectedStrokeId]
   )
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.isPrimary === false) return
 
-      if (activeTool === 'eraser') {
-        if (eraserHasMovedRef.current) {
+      const pos = getEventPos(e)
+      const elapsed = Date.now() - downTimeRef.current
+
+      // End drag
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false
+        setIsDragging(false)
+        dragLastPosRef.current = null
+        scheduleSave()
+        return
+      }
+
+      // Eraser (shift or explicit)
+      if (e.shiftKey || activeTool === 'eraser') {
+        if (hasMovedRef.current) {
           drawing.endStroke('eraser', activeColor, strokeWidth, 1)
           scheduleSave()
         } else {
           drawing.cancelCurrentStroke()
-          const pos = getEventPos(e)
-          const hitId = drawing.selectStrokeAtPoint(pos.x, pos.y)
-          setSelectedStrokeId(hitId)
         }
-        eraserDownPosRef.current = null
-        eraserHasMovedRef.current = false
         return
       }
 
-      const tool = activeTool as 'pencil' | 'brush' | 'highlighter'
-      drawing.endStroke(tool, activeColor, strokeWidth, 1)
+      // Tap detection: select or deselect
+      const isTap = !hasMovedRef.current && elapsed < TAP_TIME_MS
+      if (isTap) {
+        drawing.cancelCurrentStroke()
+        const hitId = drawing.selectStrokeAtPoint(pos.x, pos.y)
+        setSelectedStrokeId(hitId)
+        return
+      }
+
+      // Regular draw stroke
+      drawing.endStroke(activeTool as 'pencil' | 'brush' | 'highlighter', activeColor, strokeWidth, 1)
+      setSelectedStrokeId(null)
+      drawing.selectedStrokeId.current = null
       scheduleSave()
     },
     [activeTool, activeColor, strokeWidth, drawing, getEventPos, scheduleSave]
@@ -290,17 +351,21 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     transformOrigin: '0 0',
   }
 
-  const cursor = activeTool === 'eraser'
-    ? (selectedStrokeId ? 'pointer' : 'cell')
-    : activeTool === 'animate'
-      ? 'default'
-      : 'crosshair'
+  const cursor = isDragging
+    ? 'grabbing'
+    : selectedStrokeId
+      ? 'grab'
+      : (shiftHeld || activeTool === 'eraser')
+        ? 'cell'
+        : activeTool === 'animate'
+          ? 'default'
+          : 'crosshair'
 
   return (
     <div className="fixed inset-0 bg-[#f5f5f0] overflow-hidden">
       {/* Left toolbar */}
       <LeftToolbar
-        activeTool={activeTool}
+        activeTool={shiftHeld ? 'eraser' : activeTool}
         onToolChange={setActiveTool}
         strokeWidth={strokeWidth}
         onStrokeWidthChange={setStrokeWidth}
@@ -353,17 +418,17 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
           </div>
         )}
 
-        {/* Eraser selection hint */}
-        {activeTool === 'eraser' && selectedStrokeId && (
+        {/* Selection hint — shown whenever a stroke is selected */}
+        {selectedStrokeId && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 font-pixel text-[7px] text-[#ff006e] pointer-events-none z-10 bg-white/90 px-3 py-1 border border-[#ff006e]/30 rounded">
-            PRESS DELETE TO REMOVE
+            DRAG TO MOVE · DELETE TO REMOVE
           </div>
         )}
 
-        {/* Tool hint */}
-        {activeTool !== 'eraser' && (
+        {/* Tool hint — shown when nothing is selected */}
+        {!selectedStrokeId && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 font-pixel text-[7px] text-black/20 pointer-events-none z-10">
-            {activeTool.toUpperCase()}
+            {shiftHeld ? 'ERASER' : activeTool.toUpperCase()}
           </div>
         )}
       </div>

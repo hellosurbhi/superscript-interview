@@ -263,6 +263,43 @@ export function useDrawing(
     [canvasRef]
   )
 
+  const isPointOnStroke = useCallback(
+    (x: number, y: number, id: string): boolean => {
+      const canvas = canvasRef.current
+      if (!canvas) return false
+      const stroke = completedStrokesRef.current.find((s) => s.id === id)
+      if (!stroke || stroke.tool === 'eraser') return false
+
+      const offscreen = document.createElement('canvas')
+      offscreen.width = canvas.width
+      offscreen.height = canvas.height
+      const offCtx = offscreen.getContext('2d')
+      if (!offCtx) return false
+
+      drawStrokeToCtx(offCtx, stroke.points, stroke.tool, '#ffffff', stroke.size, 1)
+
+      const px = Math.round(x)
+      const py = Math.round(y)
+      if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) return false
+      return offCtx.getImageData(px, py, 1, 1).data[3] > 0
+    },
+    [canvasRef]
+  )
+
+  const moveStroke = useCallback(
+    (id: string, dx: number, dy: number) => {
+      const strokes = completedStrokesRef.current
+      const stroke = strokes.find((s) => s.id === id)
+      if (!stroke) return
+      stroke.points = stroke.points.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }))
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      if (ctx) redrawAll(ctx, strokes)
+    },
+    [canvasRef, redrawAll]
+  )
+
   const deleteSelectedStroke = useCallback(() => {
     const id = selectedStrokeIdRef.current
     if (!id) return
@@ -360,6 +397,8 @@ export function useDrawing(
     drawSelectionHalo,
     isDrawing: isDrawingRef,
     selectStrokeAtPoint,
+    isPointOnStroke,
+    moveStroke,
     deleteSelectedStroke,
     selectedStrokeId: selectedStrokeIdRef,
   }
