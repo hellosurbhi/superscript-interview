@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## fix: delete→undo, soft-tap dot, hover cursor, ⌘⌥ toggle, onboarding tutorial
+**Date:** 2026-02-24
+**Commit:** 2d3e268
+
+### What changed
+
+Six UX improvements across `useDrawing.ts`, `DrawingCanvas.tsx`, and `LeftToolbar.tsx`.
+
+**Fix 1 — Delete key undoes when nothing selected**
+Previously `Delete`/`Backspace` was a no-op when no stroke was selected. Now falls back to `undoLast()`, matching user expectation that "delete means undo last thing."
+
+**Fix 2 — Soft tap on empty canvas draws a dot**
+The `isTap` path in `handlePointerUp` always called `cancelCurrentStroke()` — discarding the dot that `startStroke()` already rendered on pointerdown. New logic: check hit with `hitTestAtPoint` first; if empty space, call `endStroke()` instead to commit the dot.
+
+**Fix 3 — Real-time hover cursor + no paint splash**
+Added `hitTestAtPoint` to `useDrawing` (pure hit test, no side effect on `selectedStrokeIdRef`). `handlePointerMove` runs a throttled (~30fps) hover check updating `hoverStrokeId` state + ref. Cursor now shows `grab` as soon as pointer hovers over any stroke. `handlePointerDown` blocks freehand start when `hoverStrokeIdRef.current` is set — prevents the brief freehand paint-splash before tap-select fires.
+
+**Fix 4 — ⌘⌥ keyboard shortcut for pencil↔eraser toggle**
+Added `(e.metaKey || e.ctrlKey) && e.altKey` handler in LeftToolbar's keyboard `useEffect`. Toggles: eraser → pencil, anything else → eraser. `activeTool` added to effect dependency array.
+
+**Fix 5 — Hover tooltips + 5-second onboarding tutorial**
+`LeftToolbar` receives new `showTutorial: boolean` prop. `DrawingCanvas` drives it via `useState(true)` + 5s `setTimeout`. Each sidebar button (and undo/clear/share) renders a tooltip label to the right when hovered or when `showTutorial` is true. Tooltip shows tool name + keyboard shortcuts including the new ⌘⌥ toggle. Sidebar `overflow: visible` added so tooltips extend outside the 56px sidebar width.
+
+### Files affected
+- `src/hooks/useDrawing.ts` — Added + exported `hitTestAtPoint`
+- `src/components/canvas/DrawingCanvas.tsx` — Hover state + refs, tutorial state, all pointer handler changes
+- `src/components/canvas/LeftToolbar.tsx` — Rewrote with tooltips, tutorial prop, ⌘⌥ shortcut, `activeTool` dep
+
 ## feat: add AI animation feature — prompt-to-canvas animation via Claude
 **Date:** 2026-02-24
 **Commit:** 0e2f3b1
