@@ -1,5 +1,56 @@
 # CHANGELOG
 
+## feat: Supabase sharing — share_token, modal, /share route, animation persistence
+**Date:** 2026-02-24
+**Commit:** 99bb07f
+
+### What changed
+
+Full sharing flow implemented from scratch on top of the partially-wired skeleton.
+
+**Database** — Added 4 new columns: `share_token` (text, unique), `animation_code` (text, nullable), `animation_prompt` (text, nullable), `canvas_image` (text, nullable). Index on `share_token` for fast lookups. SQL migration provided in plan file.
+
+**Server-only Supabase client** (`src/lib/supabase-server.ts`) — New file using `SUPABASE_SERVICE_ROLE_KEY` (never exposed to browser). All API routes and DB operations now use this client instead of the anon key.
+
+**`src/lib/drawings.ts`** — Updated all 3 functions: `getDrawing` now looks up by `share_token` (not UUID), selects `id`/`animation_code`/`animation_prompt` in addition to existing fields. `createDrawing` now accepts `shareToken` and `canvasImage`. `updateDrawing` now optionally accepts `animationCode`/`animationPrompt` and sets them conditionally.
+
+**API route rename** — `[id]` folder renamed to `[token]`. GET now queries Supabase by `share_token`; PUT still accepts UUID `id` (DrawingCanvas stores both). Avoids any naming collision: canvas auto-saves via UUID, shares load via short token.
+
+**`POST /api/drawings`** — Now uses `nanoid(10)` for `share_token`, captures `canvas_image` from request body, returns `{ id, share_token, share_url, expiresAt }` instead of just `{ id, expiresAt }`. `share_url` uses `NEXT_PUBLIC_APP_URL` env var (defaults to `https://surbhidraw.vercel.app`).
+
+**`/share/[token]` route** (`src/app/share/[token]/page.tsx`) — Replaced the old `/draw/[id]` route. Loads drawing by share token. Passes `drawingId` (UUID for auto-save), `initialStrokes`, `initialAnimationCode`, `initialAnimationPrompt` to DrawingCanvas. Same loading/expired states as old route.
+
+**`ShareModal.tsx`** (`src/components/canvas/ShareModal.tsx`) — New modal component. Shows share URL in selectable input, COPY/COPIED! button with 2s feedback, expiry/edit disclaimer, close ×. Closes on Escape key and click-outside. Consistent pixel font + neutral card style.
+
+**`DrawingCanvas.tsx`** — Added `initialAnimationCode` + `initialAnimationPrompt` props. Added `shareTokenRef` and `shareUrlRef` to store share metadata alongside UUID. `handleShare` reworked: opens modal instead of copying directly; if already shared, opens modal immediately; captures `canvas_image` via `drawingCanvasRef.toDataURL()`; navigates to `/share/{token}`. Auto-play animation effect: on mount, if `initialAnimationCode` is truthy, sets `activeTool = 'animate'`. Passes `onShare` and `preloadedCode` to AnimateOverlay. Renders `ShareModal`.
+
+**`LeftToolbar.tsx`** — Share button moved to very bottom (below Clear), as requested. Removed "copied" state from button display — the modal handles feedback now.
+
+**`AnimateOverlay.tsx`** — Added `onShare?: (code, prompt) => void` and `preloadedCode?: string` props. If `preloadedCode` is provided, phase initializes directly to `'playing'` (auto-plays without going through idle). Share button appears in playing controls when `onShare` is provided.
+
+### Files affected
+- `src/lib/supabase-server.ts` — CREATE
+- `src/lib/drawings.ts` — MODIFY
+- `src/app/api/drawings/route.ts` — MODIFY
+- `src/app/api/drawings/[id]/` → `[token]/route.ts` — RENAME + MODIFY
+- `src/app/share/[token]/page.tsx` — CREATE (was draw/[id])
+- `src/app/draw/[id]/page.tsx` — DELETE
+- `src/components/canvas/ShareModal.tsx` — CREATE
+- `src/components/canvas/DrawingCanvas.tsx` — MODIFY
+- `src/components/canvas/LeftToolbar.tsx` — MODIFY
+- `src/components/canvas/AnimateOverlay.tsx` — MODIFY
+
+### Before running
+1. Run this SQL in Supabase dashboard:
+   ```sql
+   ALTER TABLE drawings ADD COLUMN IF NOT EXISTS share_token text UNIQUE;
+   ALTER TABLE drawings ADD COLUMN IF NOT EXISTS animation_code text;
+   ALTER TABLE drawings ADD COLUMN IF NOT EXISTS animation_prompt text;
+   ALTER TABLE drawings ADD COLUMN IF NOT EXISTS canvas_image text;
+   CREATE INDEX IF NOT EXISTS drawings_share_token_idx ON drawings(share_token);
+   ```
+2. Add to `.env.local`: `SUPABASE_SERVICE_ROLE_KEY=<service_role_key>`
+
 ## fix: pointer offset, resize data loss, session persistence, tip copy
 **Date:** 2026-02-24
 **Commit:** 09142be
