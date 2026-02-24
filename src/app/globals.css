@@ -1,26 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-neon-blue: #00f5ff;
+  --color-neon-pink: #ff006e;
+  --color-neon-purple: #8338ec;
+  --color-neon-green: #06d6a0;
+  --color-canvas-bg: #111111;
+  --color-toolbar-bg: #0d0d1a;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-pixel: 'Press Start 2P', monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  background: #0a0a0a;
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── CRT Scanline Overlay ─────────────────────────────── */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  animation: scanline-scroll 10s linear infinite;
+}
+
+@keyframes scanline-scroll {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100vh;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── Pixel Rendering ──────────────────────────────────── */
+.pixel-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ─── Tool Pulse Animation ─────────────────────────────── */
+@keyframes tool-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 245, 255, 0.8);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(0, 245, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 245, 255, 0);
+  }
+}
+
+.tool-active-pulse {
+  animation: tool-pulse 350ms ease-out forwards;
+}
+
+/* ─── Neon Blink Animation ─────────────────────────────── */
+@keyframes neon-blink {
+  0%, 49% {
+    opacity: 1;
+    text-shadow:
+      0 0 8px #00f5ff,
+      0 0 20px #00f5ff,
+      0 0 40px #00f5ff;
+  }
+  50%, 100% {
+    opacity: 0.2;
+    text-shadow: none;
+  }
+}
+
+.neon-blink {
+  animation: neon-blink 1s step-start infinite;
+}
+
+/* ─── Pixel Explosion Particles ────────────────────────── */
+@keyframes pixel-explode {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* ─── Welcome page slide-up transition ─────────────────── */
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slide-up-fade 400ms ease-out forwards;
+}
+
+/* ─── Drawing Canvas Grid Background ───────────────────── */
+.canvas-grid-bg {
+  background-color: #111;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ─── Toolbar Frosted Glass ─────────────────────────────── */
+.toolbar-glass {
+  background: rgba(13, 13, 26, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0, 245, 255, 0.12);
+}
+
+/* ─── Color Palette Panel ───────────────────────────────── */
+@keyframes panel-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.palette-panel {
+  animation: panel-slide-up 250ms ease-out forwards;
+}
+
+/* ─── Touch-action: none for canvas elements ────────────── */
+canvas {
+  touch-action: none;
+}
+
+/* ─── Shape creation drag preview ───────────────────────── */
+@keyframes shape-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.shape-appear {
+  animation: shape-appear 150ms ease-out forwards;
+}
+
+/* ─── Pixel font utility ─────────────────────────────────── */
+.font-pixel {
+  font-family: 'Press Start 2P', monospace;
+}
+
+/* ─── Neon glow text ─────────────────────────────────────── */
+.neon-text-blue {
+  color: #00f5ff;
+  text-shadow:
+    0 0 6px #00f5ff,
+    0 0 14px #00f5ff;
+}
+
+.neon-text-pink {
+  color: #ff006e;
+  text-shadow:
+    0 0 6px #ff006e,
+    0 0 14px #ff006e;
+}
+
+/* ─── Scrollbar styling ──────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #111;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
 }
