@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## feat: add 5s polling sync for /share/[token] views
+**Date:** 2026-02-24
+**Commit:** 81744b5
+
+### What changed
+Shared drawing viewers now automatically see updates without reloading. Every 5 seconds, the share page polls the drawing API, compares `updated_at`, and repaints the canvas if the drawing changed. A subtle "↻ synced" flash appears in the bottom-right corner on updates.
+
+### Files affected
+- `src/hooks/useDrawing.ts` — added `setExternalStrokes`
+- `src/components/canvas/DrawingCanvas.tsx` — added `shareToken` prop + polling + toast
+- `src/app/share/[token]/page.tsx` — passes `shareToken={token}` to DrawingCanvas
+
+### Implementation details
+
+**`setExternalStrokes(strokes)`** (useDrawing.ts): New function on the hook return that replaces `completedStrokesRef.current` and immediately calls `redrawAll`. Bypasses session storage and all draw state — pure external data injection.
+
+**Polling effect** (DrawingCanvas.tsx):
+- Activated only when `shareToken` prop is set (opt-in — normal draw page unaffected)
+- `setInterval(poll, 5000)` — cleans up on unmount via returned `clearInterval`
+- Skips poll if `drawing.isDrawing.current === true` (never interrupts an active stroke)
+- First poll: seeds `lastUpdatedAtRef` with server's `updated_at`, no repaint (strokes already shown from initial render)
+- Subsequent polls: if `updated_at` changed → calls `setExternalStrokes` + `setSyncFlash(true)` → resets after 1s
+- Silent failure on network errors or non-200 responses
+
+**Sync toast**: Always rendered (zero height impact), `opacity: 0` normally. On flash: `opacity: 0.7` with `transition: 'none'` (instant appear). When flash ends: `transition: 'opacity 0.5s ease-out'` (smooth fade). Font-pixel, `#ff006e`, bottom-right corner.
+
+### Decisions
+- Polling over WebSockets: simpler, zero infrastructure, good enough for a demo
+- 5s interval: short enough to feel live, cheap enough to not spam the API
+- `isDrawing` guard: prevents jarring mid-stroke canvas repaints from concurrent edits
+
+---
+
 ## feat: add /session build log viewer page
 **Date:** 2026-02-24
 **Commit:** d97c5db
