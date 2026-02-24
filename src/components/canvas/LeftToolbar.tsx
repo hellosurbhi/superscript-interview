@@ -250,7 +250,7 @@ export default function LeftToolbar({
       {/* Share — very bottom */}
       <div className="relative flex flex-col items-center gap-0.5">
         <button
-          onClick={onShare}
+          onClick={() => onShare()}
           disabled={shareState === 'saving'}
           onMouseEnter={() => setHoveredTarget('share')}
           onMouseLeave={() => setHoveredTarget(null)}

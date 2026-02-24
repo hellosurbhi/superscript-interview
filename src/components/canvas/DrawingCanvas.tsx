@@ -475,7 +475,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ strokes: drawing.getStrokes(), animation_code: animationCode, animation_prompt: animationPrompt ?? null }),
-        }).catch(() => {})
+        }).catch((err: unknown) => console.error('[handleShare] animation PUT failed:', err))
       }
       setShareModal({ url: shareUrlRef.current })
       return
@@ -483,7 +483,12 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
 
     setShareState('saving')
     try {
-      const canvasImage = drawingCanvasRef.current?.toDataURL('image/png') ?? null
+      let canvasImage: string | null = null
+      try {
+        canvasImage = drawingCanvasRef.current?.toDataURL('image/png') ?? null
+      } catch (imgErr) {
+        console.error('[handleShare] toDataURL failed:', imgErr)
+      }
       const res = await fetch('/api/drawings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -508,7 +513,8 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
       window.history.replaceState(null, '', `/share/${share_token}`)
       setShareState('idle')
       setShareModal({ url: share_url })
-    } catch {
+    } catch (err) {
+      console.error('[handleShare]', err)
       setShareState('error')
       setTimeout(() => setShareState('idle'), 2000)
     }
