@@ -1,5 +1,46 @@
 # CHANGELOG
 
+## feat: full pink/magenta retheme — zero cyan/blue remaining
+**Date:** 2026-02-24
+**Commit:** 27da112
+
+### What changed
+Replaced every trace of the `#00f5ff` cyan hacker aesthetic and `#0d0d1a` blue-black toolbar background with warm pink/magenta, making the entire app feel cohesive and personal.
+
+### Color mapping
+| Old | New | Where |
+|-----|-----|-------|
+| `#00f5ff` | `#ff006e` | Active states, glows, labels, sliders, progress bars, loaders, link text |
+| `rgba(0,245,255,X)` | `rgba(255,0,110,X)` | All rgba variants of the above |
+| `#0d0d1a` | `#1a0812` | Toolbar glass, modal/overlay backgrounds, tooltips |
+| `rgba(13,13,26,X)` | `rgba(26,8,18,X)` | Expanded form of above |
+| Palette `#00ffff` | `#f72585` | Drawing palette — vivid magenta |
+| Palette `#00f5ff` | `#ff4d94` | Drawing palette — light pink |
+| Palette `#4cc9f0` | `#ff85b3` | Drawing palette — soft rose |
+| LOADER_COLORS `#00f5ff` | `#f72585` | Pixel loader animation |
+
+### Files changed
+- `src/app/globals.css` — CSS custom properties, tool-pulse keyframes, toolbar-glass border, neon-text-blue class
+- `src/components/canvas/AnimateOverlay.tsx` — all four phases (idle/loading/error/playing), progress bars, controls pill, generate button
+- `src/components/canvas/LeftToolbar.tsx` — sidebar bg/border, active tool highlight, all tooltips, slider, brand mark
+- `src/components/canvas/Toolbar.tsx` — stroke width slider gradient/accent, active tool ring
+- `src/components/canvas/ColorPalette.tsx` — COLOR header label, selected color ring + ring-offset
+- `src/components/canvas/ShortcutsOverlay.tsx` — card background, border, glow, KEYBOARD SHORTCUTS title
+- `src/app/share/[token]/page.tsx` — expired-state "Start a new one →" link
+- `src/types/drawing.ts` — PALETTE_COLORS array
+
+### Preserved
+- `#ff006e` delete/clear danger actions — same pink, no conflict
+- Amber/orange selected stroke halo — still works against pink
+- `#1a1a2e` default drawing stroke color — dark ink on light canvas
+- `#0000ff`, `#3a0ca3` — fundamental blue/indigo drawing colors kept
+- WelcomeCanvas.tsx — was already fully warm/pink themed, untouched
+
+### Verification
+Grep for `00f5ff`, `0d0d1a`, `rgba(0,245,255`, `rgba(13,13` in `src/` → zero results.
+
+---
+
 ## fix: make StoredDrawing.updated_at nullable to match DB column
 **Date:** 2026-02-24
 **Commit:** e4755f7
