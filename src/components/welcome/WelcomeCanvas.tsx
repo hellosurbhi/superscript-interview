@@ -187,7 +187,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
     let logoBlinkOn = true
     let logoCursorTick = 0
 
-    const features = ['DRAW  TEXT  ANIMATE', 'SELECT  DRAG  DELETE', 'SHARE  COLLABORATE  EXPIRE']
+    const features = ['DRAW  TEXT  ANIMATE', 'SELECT  DRAG  DELETE', 'SHARE  COLLABORATE  ENJOY!']
     let featureIdx = 0
     let featureCharIdx = 0
     let featureTypeTick = 0
@@ -460,8 +460,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
             style={{ fontSize: 'clamp(5px, 0.7vw, 8px)', opacity: 0.7 }}
           >
             Draw wireframes, art prototypes, pretty much anything
-            your heart desires — and let&apos;s see if we can help
-            you animate it (still in progress)
+            your heart desires — and we'll animate it for you
           </p>
           <p
             className="font-pixel leading-relaxed mb-2 text-[#7a3550]"
@@ -482,8 +481,15 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
       )}
 
       {/* Corner version tag */}
-      <div className="absolute bottom-4 left-4 font-pixel text-[7px] text-[#c2185b]/30 z-10">
-        v0.1 2026
+      <div className="absolute bottom-4 left-4 font-pixel text-[7px] z-10 flex flex-col gap-1.5">
+        <span className="text-[#c2185b]/30">v0.1 2026</span>
+        <a
+          href="/enhancements"
+          onClick={(e) => e.stopPropagation()}
+          className="text-[#c2185b]/30 hover:text-[#ff006e]/70 transition-colors"
+        >
+          what&apos;s next →
+        </a>
       </div>
     </div>
   )
