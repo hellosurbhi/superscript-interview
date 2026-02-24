@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## feat: add text tool with canvas baking, selection, drag, and delete
+**Date:** 2026-02-24
+**Commit:** 988b90f
+
+### What changed
+Added a full text tool to SurbhiDraw. Users can now place typed text anywhere on the canvas that integrates with the existing selection/drag/delete system.
+
+### Files affected
+- `src/types/drawing.ts` — Added `'text'` to `DrawTool` union; split `CompletedStroke` into a union of `FreehandStroke | TextStroke`; added `isTextStroke()` type guard; added `strokeWidthToFontSize()` utility; reassigned keyboard shortcut `t` from `'triangle'` to `'text'`
+- `src/components/canvas/LeftToolbar.tsx` — Added "T" button between Eraser and Animate; added `t`/`T` keyboard handler; added font-size px display when text tool is active; added `isContentEditable` guard
+- `src/components/canvas/Toolbar.tsx` — Removed triangle's `'T'` shortcut label; added `isContentEditable` guard to prevent tool-switching while typing in the overlay
+- `src/hooks/useDrawing.ts` — `redrawAll` renders text strokes via `ctx.fillText`; added `addTextStroke()`; fixed `selectStrokeAtPoint`, `isPointOnStroke`, `moveStroke`, `drawSelectionHalo` to handle the union type
+- `src/components/canvas/DrawingCanvas.tsx` — Added text overlay state + contenteditable div; `commitTextOverlay()` bakes text on Enter; `handlePointerDown` commits open overlay then blocks freehand; `handlePointerUp` opens overlay on tap; zoom/pan auto-commits; cursor = `'text'`; tool hint shows font size
+
+### Decisions made
+- **Union type with discriminant**: `TextStroke.type = 'text'` distinguishes from legacy freehand strokes. Old Supabase strokes lack this field → `isTextStroke` returns false → zero migration needed
+- **`textBaseline: 'top'`**: Both overlay div and canvas rendering use top-left origin for text, ensuring the overlay's position exactly matches where the baked text appears
+- **`textValueRef` (not useState)**: Avoids stale closure issue where the commit callback would capture an old text value
+- **No return after commit-on-click**: Letting pointer events fall through after `commitTextOverlay()` means the same click opens a new overlay (chain placement UX)
+- **Bounding-box hit detection**: `ctx.measureText` width × fontSize height, not offscreen pixel sampling — appropriate since text has no irregular shape
+- **`isContentEditable` guard added to all keyboard handlers**: Without this, typing "brush" in the text overlay would switch tools (b → brush, r → rect, etc.)
+
 ## feat: unified draw-select-drag interaction model
 **Date:** 2026-02-24
 **Commit:** 6b266a6
