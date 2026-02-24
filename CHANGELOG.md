@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## fix: pointer offset, resize data loss, session persistence, tip copy
+**Date:** 2026-02-24
+**Commit:** 09142be
+
+### What changed
+
+Four fixes applied in a single commit.
+
+**Bug 1 — Pointer offset (`DrawingCanvas.tsx`, `useDrawing.ts`)**
+`getEventPos` was calling `getBoundingClientRect()` on `drawingCanvasRef` (the canvas element inside the CSS-transformed div), which double-counted the translation. Fixed by using `wrapperRef` instead — the wrapper has no CSS transform so its rect is always the ground-truth origin. Simultaneously refactored `startStroke` and `continueStroke` in `useDrawing.ts` to accept pre-computed `(x, y, pressure)` instead of a raw `PointerEvent` + transform object, eliminating a second redundant coord calculation in the hook. DrawingCanvas is now the single source of truth for coordinate mapping.
+
+**Bug 2a — Canvas clears on resize (`DrawingCanvas.tsx`)**
+The ResizeObserver only repainted on the first resize when `initialStrokes` were present. Replaced `let painted = false` guard with unconditional `drawing.redrawFromHistory()` on every resize — canvas pixel buffer clears on any dimension change, so always repainting is correct.
+
+**Bug 2b — sessionStorage persistence (`useDrawing.ts`)**
+Strokes are now saved to `sessionStorage` under `surbhidraw_strokes` after every mutation (endStroke, undoLast, deleteSelectedStroke, clearCanvas, addTextStroke). On mount the hook restores strokes from session storage; the ResizeObserver then repaints them once the canvas is sized. Both read and write are gated by `initialStrokes?.length` so shared `/draw/[id]` views never overwrite the session key.
+
+**Copy — session tip (`WelcomeCanvas.tsx`)**
+Added a subtle tip line above "CLICK ANYWHERE TO BEGIN" in the welcome CTA overlay: "tip: your drawing is saved for this session, but not between sessions (yet)". Styled at `clamp(4px, 0.55vw, 7px)` in `text-white/20`.
+
+**Docs (`README.md`)**
+Added Known Limitations section documenting the canvas-clears-on-resize behavior and sessionStorage workaround.
+
+### Files affected
+- `src/hooks/useDrawing.ts` — added `useEffect` import; `SESSION_KEY` constant; sessionStorage restore effect; `saveToSession` callback; refactored `startStroke`/`continueStroke` signatures; added `saveToSession()` calls in `endStroke`, `undoLast`, `deleteSelectedStroke`, `clearCanvas`, `addTextStroke`
+- `src/components/canvas/DrawingCanvas.tsx` — `getEventPos` uses `wrapperRef`; ResizeObserver always calls `redrawFromHistory()`; `handlePointerDown` and `handlePointerMove` call sites updated; removed `transformArgs` local
+- `src/components/welcome/WelcomeCanvas.tsx` — session tip `<p>` added in CTA overlay
+- `README.md` — Known Limitations section added
+
+### Trade-offs
+- sessionStorage is cleared on tab close — not a full persistence solution but appropriate for an ephemeral canvas tool. The tip copy sets correct expectations.
+- The ResizeObserver repaint adds ~1ms overhead on every resize event but is negligible and necessary for correctness.
+
 ## fix: delete→undo, soft-tap dot, hover cursor, ⌘⌥ toggle, onboarding tutorial
 **Date:** 2026-02-24
 **Commit:** 2d3e268
