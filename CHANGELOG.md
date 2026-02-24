@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## feat: add '?' shortcuts hint to welcome screen CTA
+**Date:** 2026-02-24
+**Commit:** 70e4d9d
+
+### What changed
+Added a dim "Press ? for keyboard shortcuts" line to the bottom-right CTA overlay in `WelcomeCanvas.tsx`, inserted between the session tip and the "CLICK ANYWHERE TO BEGIN" blink prompt. Uses the same `text-white/20` dim style and `clamp(4px, 0.55vw, 7px)` font size as the session tip — keeps visual hierarchy consistent and non-intrusive.
+
+### Why
+The `?` shortcuts overlay was added to `/draw` but had zero discoverability. New users landing on the welcome screen have no idea the shortcut exists. One unobtrusive hint line bridges that gap without cluttering the animation.
+
+### Files affected
+- `src/components/welcome/WelcomeCanvas.tsx` — added hint `<p>` in `{showCta}` block
+
+---
+
 ## fix: share button crash — SyntheticEvent passed as animationCode to JSON.stringify
 **Date:** 2026-02-24
 **Commit:** b5201d0
