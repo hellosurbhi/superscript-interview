@@ -90,12 +90,12 @@ body {
   0%, 49% {
     opacity: 1;
     text-shadow:
-      0 0 8px #00f5ff,
-      0 0 20px #00f5ff,
-      0 0 40px #00f5ff;
+      0 0 8px #e91e8c,
+      0 0 20px rgba(233, 30, 140, 0.4),
+      0 0 40px rgba(233, 30, 140, 0.2);
   }
   50%, 100% {
-    opacity: 0.2;
+    opacity: 0.15;
     text-shadow: none;
   }
 }

@@ -1,13 +1,73 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 
 const BLOCK_SIZE = 8
+
 const PIXEL_COLORS = [
-  '#00f5ff', '#ff006e', '#8338ec', '#06d6a0',
-  '#ffd60a', '#fb5607', '#3a0ca3', '#4cc9f0',
-  '#ff4d6d', '#c77dff', '#48cae4', '#f72585',
+  '#ff2d9e', '#ff6eb4', '#ff9ecd', '#ff6b35',
+  '#ffb347', '#ffd700', '#e040fb', '#f48fb1',
+  '#ff4081', '#ff80ab', '#ffcc02', '#ff5722',
+]
+
+// ─── Pixel girl sprite ────────────────────────────────────────
+const GIRL_SPR = 5  // canvas pixels per sprite pixel
+
+const GIRL_PAL: Record<string, string> = {
+  K: '#111118',  // outline
+  H: '#1a0834',  // dark hair
+  h: '#6b21a8',  // purple hair highlight
+  S: '#8B5E3C',  // brown skin
+  s: '#c49060',  // lighter skin
+  P: '#e91e8c',  // hot pink outfit
+  p: '#ff80ab',  // light pink
+  W: '#ffffff',  // white (eyes)
+  e: '#2d0055',  // eye pupils
+  Y: '#ffd700',  // gold accessories
+  G: '#8B4513',  // brush handle
+  T: '#ffd166',  // brush tip/bristles
+}
+
+// 12 cols × 16 rows — '.' = transparent
+const GIRL_FRAMES: string[][] = [
+  // Frame 0: right leg forward
+  [
+    '..KKKKKK....',
+    '.KHHhHhHK...',
+    '.KHHHHHHK...',
+    'KHHSSSSHHK..',
+    'KHSssSSsHK..',
+    'KHSWeWeWHK..',
+    'KHS.SSS.HK..',
+    '.KHSSSSSK...',
+    '.KPPpPpPK..G',
+    'KPPPPPPPPpKG',
+    'KPPYPPPPPpKG',
+    '.KppPPPpK..T',
+    '..KPK.KPK...',
+    '..KPK.KSK...',
+    '..KSK.KKK...',
+    '..KKK.......',
+  ],
+  // Frame 1: left leg forward
+  [
+    '..KKKKKK....',
+    '.KHHhHhHK...',
+    '.KHHHHHHK...',
+    'KHHSSSSHHK..',
+    'KHSssSSsHK..',
+    'KHSWeWeWHK..',
+    'KHS.SSS.HK..',
+    '.KHSSSSSK...',
+    '.KPPpPpPKP.G',
+    'KPPPPPPPPpKG',
+    'KPPYPPPPPpKG',
+    '.KppPPPpK..T',
+    '..KSK.KPK...',
+    '..KSK.KPK...',
+    '..KKK.KSK...',
+    '.......KKK..',
+  ],
 ]
 
 interface Particle {
@@ -21,7 +81,19 @@ interface Particle {
   decay: number
 }
 
-export default function WelcomeCanvas() {
+interface TrailDot {
+  x: number
+  y: number
+  color: string
+  alpha: number
+}
+
+interface WelcomeCanvasProps {
+  onEnter: () => void
+  dismissing: boolean
+}
+
+export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animBoxRef = useRef<HTMLDivElement>(null)
   const phaseRef = useRef(0)
@@ -29,7 +101,6 @@ export default function WelcomeCanvas() {
   const particlesRef = useRef<Particle[]>([])
   const rafRef = useRef<number | null>(null)
   const [showCta, setShowCta] = useState(false)
-  const router = useRouter()
 
   const spawnParticles = useCallback((cx: number, cy: number) => {
     for (let i = 0; i < 24; i++) {
@@ -75,13 +146,32 @@ export default function WelcomeCanvas() {
       ctx.globalAlpha = 1
     }
 
+    const drawGirl = (gx: number, gy: number, frame: number) => {
+      const rows = GIRL_FRAMES[frame]
+      for (let row = 0; row < rows.length; row++) {
+        for (let col = 0; col < rows[row].length; col++) {
+          const ch = rows[row][col]
+          if (ch === '.' || ch === ' ') continue
+          const color = GIRL_PAL[ch]
+          if (!color) continue
+          ctx.fillStyle = color
+          ctx.fillRect(
+            Math.round(gx + col * GIRL_SPR),
+            Math.round(gy + row * GIRL_SPR),
+            GIRL_SPR - 1,
+            GIRL_SPR - 1
+          )
+        }
+      }
+    }
+
     const gridCols = Math.ceil(animBox.clientWidth / BLOCK_SIZE)
     const gridRows = Math.ceil(animBox.clientHeight / BLOCK_SIZE)
     const totalBlocks = gridCols * gridRows
     const blockRevealOrder: Array<{ gx: number; gy: number; color: string }> = []
     for (let gy = 0; gy < gridRows; gy++) {
       for (let gx = 0; gx < gridCols; gx++) {
-        blockRevealOrder.push({ gx, gy, color: '#111' })
+        blockRevealOrder.push({ gx, gy, color: '#f8e4f0' })
       }
     }
     for (let i = blockRevealOrder.length - 1; i > 0; i--) {
@@ -103,7 +193,15 @@ export default function WelcomeCanvas() {
     let featureTypeTick = 0
 
     let ctaShown = false
-    let paintProgress = 0
+
+    // Phase 4: pixel girl walk state
+    const GIRL_W = 12 * GIRL_SPR
+    const GIRL_H = 16 * GIRL_SPR
+    let girlX = -GIRL_W
+    let walkFrame = 0
+    let walkTick = 0
+    const trail: TrailDot[] = []
+    let trailColorIdx = 0
 
     const loop = () => {
       const W = canvas.width
@@ -111,7 +209,11 @@ export default function WelcomeCanvas() {
       tickRef.current++
       const t = tickRef.current
 
-      ctx.fillStyle = '#0a0a0a'
+      // Warm gradient background (replaces flat dark fill)
+      const grad = ctx.createLinearGradient(0, 0, 0, H)
+      grad.addColorStop(0, '#fff0f7')
+      grad.addColorStop(1, '#ffd6ea')
+      ctx.fillStyle = grad
       ctx.fillRect(0, 0, W, H)
 
       // Phase 0: Initial single pixel
@@ -119,14 +221,14 @@ export default function WelcomeCanvas() {
         const alpha = Math.min(1, t / 10)
         const cx = Math.floor(W / 2 / BLOCK_SIZE)
         const cy = Math.floor(H / 2 / BLOCK_SIZE)
-        drawPixelBlock(cx, cy, '#00f5ff', alpha)
+        drawPixelBlock(cx, cy, '#e91e8c', alpha)
         if (t >= 15) {
           phaseRef.current = 1
           spawnParticles(W / 2, H / 2)
         }
       }
 
-      // Phase 1: Minecraft block explosion
+      // Phase 1: Block reveal
       if (phaseRef.current >= 1) {
         for (let i = 0; i < blocksRevealed; i++) {
           const b = blockRevealOrder[i]
@@ -140,7 +242,7 @@ export default function WelcomeCanvas() {
 
       // Phase 2: Logo typing
       if (phaseRef.current >= 2) {
-        ctx.strokeStyle = 'rgba(0,245,255,0.06)'
+        ctx.strokeStyle = 'rgba(233,30,140,0.04)'
         ctx.lineWidth = 1
         for (let lx = 0; lx < W; lx += BLOCK_SIZE * 4) {
           ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, H); ctx.stroke()
@@ -159,10 +261,10 @@ export default function WelcomeCanvas() {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
 
-        for (const [blur, alpha] of [[30, 0.3], [15, 0.5], [6, 0.8], [0, 1]] as const) {
+        for (const [blur, alpha] of [[30, 0.2], [15, 0.45], [6, 0.75], [0, 1]] as const) {
           ctx.shadowBlur = blur
-          ctx.shadowColor = '#00f5ff'
-          ctx.fillStyle = `rgba(0,245,255,${alpha})`
+          ctx.shadowColor = '#e91e8c'
+          ctx.fillStyle = `rgba(233,30,140,${alpha})`
           ctx.fillText(displayText, W / 2, H * 0.28)
         }
         ctx.shadowBlur = 0
@@ -173,7 +275,7 @@ export default function WelcomeCanvas() {
           const logoFontSize = Math.max(12, Math.floor(W / 22))
           const charWidth = logoFontSize * 0.6
           const textWidth = logoCharsShown * charWidth
-          ctx.fillStyle = '#00f5ff'
+          ctx.fillStyle = '#e91e8c'
           ctx.fillRect(W / 2 - textWidth / 2 + textWidth, H * 0.28 - logoFontSize * 0.6, 3, logoFontSize * 1.2)
         }
       }
@@ -204,43 +306,62 @@ export default function WelcomeCanvas() {
 
         features.slice(0, featureIdx + 1).forEach((feat, idx) => {
           const displayFeat = idx === featureIdx ? feat.slice(0, featureCharIdx) : feat
-          const alpha = idx === featureIdx ? 1 : 0.5
-          ctx.fillStyle = `rgba(6,214,160,${alpha})`
-          ctx.shadowColor = '#06d6a0'
-          ctx.shadowBlur = idx === featureIdx ? 8 : 0
+          const alpha = idx === featureIdx ? 0.85 : 0.5
+          ctx.fillStyle = `rgba(100,20,60,${alpha})`
+          ctx.shadowColor = '#c2185b'
+          ctx.shadowBlur = idx === featureIdx ? 6 : 0
           ctx.fillText(displayFeat, W / 2, H * 0.42 + idx * (featFontSize + 10))
         })
         ctx.shadowBlur = 0
       }
 
-      // Phase 4: Pixel paint strokes
+      // Phase 4: Pixel girl walking left→right, leaving sparkle trail
       if (phaseRef.current >= 4) {
-        paintProgress = Math.min(1, paintProgress + 0.008)
+        const girlY = Math.floor(H * 0.68) - GIRL_H
 
-        const strokeCount = 6
-        for (let s = 0; s < strokeCount; s++) {
-          const progress = Math.max(0, paintProgress - s * 0.12)
-          if (progress <= 0) continue
-          const strokeLen = Math.floor(W / BLOCK_SIZE * progress * 0.7)
-          const startGx = Math.floor(W / BLOCK_SIZE * 0.1) + s * 3
-          const gy = Math.floor(H / BLOCK_SIZE * (0.58 + s * 0.04))
-          const col = PIXEL_COLORS[s % PIXEL_COLORS.length]
-          for (let i = 0; i < strokeLen; i++) {
-            const wobble = Math.sin((i + s * 7) * 0.4) * 1
-            drawPixelBlock(startGx + i, gy + Math.round(wobble), col, 0.7)
+        if (phaseRef.current === 4) {
+          girlX += 3
+          walkTick++
+          if (walkTick % 8 === 0) walkFrame = 1 - walkFrame
+
+          // Sparkle trail dots
+          if (walkTick % 3 === 0) {
+            trail.push({
+              x: girlX + Math.round(Math.random() * GIRL_W * 0.5),
+              y: girlY + GIRL_H - Math.round(Math.random() * GIRL_H * 0.3),
+              color: PIXEL_COLORS[trailColorIdx % PIXEL_COLORS.length],
+              alpha: 1,
+            })
+            trailColorIdx++
           }
+
+          if (girlX > W + GIRL_W) phaseRef.current = 5
         }
 
-        if (paintProgress >= 1 && phaseRef.current === 4) phaseRef.current = 5
+        // Draw trail (fade each dot out)
+        for (let i = trail.length - 1; i >= 0; i--) {
+          const dot = trail[i]
+          dot.alpha -= 0.006
+          if (dot.alpha <= 0) { trail.splice(i, 1); continue }
+          ctx.globalAlpha = dot.alpha
+          ctx.fillStyle = dot.color
+          ctx.fillRect(dot.x, dot.y, GIRL_SPR, GIRL_SPR)
+          ctx.globalAlpha = 1
+        }
+
+        // Draw girl (only while she's actively walking)
+        if (phaseRef.current === 4) {
+          drawGirl(girlX, girlY, walkFrame)
+        }
       }
 
-      // Phase 5: CTA reveal
+      // Phase 5: Subtitle + CTA reveal
       if (phaseRef.current >= 5) {
         const subFontSize = Math.max(5, Math.floor(W / 65))
         ctx.font = `${subFontSize}px 'Press Start 2P', monospace`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillStyle = 'rgba(255,255,255,0.4)'
+        ctx.fillStyle = 'rgba(100,20,60,0.5)'
         ctx.fillText('DRAW. CREATE. ANIMATE. 2026.', W / 2, H * 0.74)
 
         if (!ctaShown) {
@@ -283,18 +404,18 @@ export default function WelcomeCanvas() {
     }
   }, [spawnParticles])
 
-  const handleEnter = useCallback(() => {
-    router.push('/draw')
-  }, [router])
-
   return (
     <div
-      onClick={handleEnter}
-      className="relative w-full h-full bg-[#0a0a0a] overflow-hidden cursor-pointer flex items-center justify-center"
+      onClick={onEnter}
+      style={{
+        background: 'linear-gradient(180deg, #fff0f7 0%, #ffd6ea 100%)',
+        transition: 'opacity 600ms ease-out, transform 600ms ease-out',
+        opacity: dismissing ? 0 : 1,
+        transform: dismissing ? 'scale(1.04)' : 'scale(1)',
+        pointerEvents: dismissing ? 'none' : 'auto',
+      }}
+      className="fixed inset-0 z-[100] overflow-hidden cursor-pointer flex items-center justify-center"
     >
-      {/* CRT scanline overlay */}
-      <div className="crt-overlay" />
-
       {/* Centered animation box — ~60% of screen */}
       <div
         ref={animBoxRef}
@@ -310,41 +431,58 @@ export default function WelcomeCanvas() {
         {/* Subtle border on animation box */}
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ border: '1px solid rgba(0,245,255,0.08)' }}
+          style={{ border: '1px solid rgba(233,30,140,0.10)' }}
         />
       </div>
 
-      {/* Welcome text — bottom right of screen */}
+      {/* Welcome panel — bottom right */}
       {showCta && (
-        <div className="absolute bottom-8 right-8 text-right z-10 pointer-events-none panel-slide-up max-w-xs">
-          <h1 className="font-pixel leading-relaxed mb-3 text-white" style={{ fontSize: 'clamp(8px, 1.2vw, 13px)' }}>
+        <div
+          className="absolute bottom-8 right-8 text-right z-10 pointer-events-none panel-slide-up max-w-xs"
+          style={{
+            background: 'rgba(255,240,247,0.88)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '1px solid rgba(233,30,140,0.15)',
+            borderRadius: '4px',
+            padding: '12px 16px',
+            boxShadow: '0 0 24px rgba(233,30,140,0.08)',
+          }}
+        >
+          <h1
+            className="font-pixel leading-relaxed mb-3 text-[#3d1025]"
+            style={{ fontSize: 'clamp(8px, 1.2vw, 13px)' }}
+          >
             Welcome to SurbhiDraw!
           </h1>
-          <p className="font-pixel text-white/50 leading-relaxed mb-4" style={{ fontSize: 'clamp(5px, 0.7vw, 8px)' }}>
+          <p
+            className="font-pixel leading-relaxed mb-4 text-[#7a3550]"
+            style={{ fontSize: 'clamp(5px, 0.7vw, 8px)', opacity: 0.7 }}
+          >
             Draw wireframes, art prototypes, pretty much anything
             your heart desires — and let&apos;s see if we can help
             you animate it (still in progress)
           </p>
           <p
-            className="font-pixel text-white/20 leading-relaxed mb-3"
-            style={{ fontSize: 'clamp(4px, 0.55vw, 7px)' }}
+            className="font-pixel leading-relaxed mb-2 text-[#7a3550]"
+            style={{ fontSize: 'clamp(4px, 0.55vw, 7px)', opacity: 0.4 }}
           >
             tip: your drawing is saved for this session,<br />but not between sessions (yet)
           </p>
           <p
-            className="font-pixel text-white/20 leading-relaxed mb-3"
-            style={{ fontSize: 'clamp(4px, 0.55vw, 7px)' }}
+            className="font-pixel leading-relaxed mb-3 text-[#7a3550]"
+            style={{ fontSize: 'clamp(4px, 0.55vw, 7px)', opacity: 0.4 }}
           >
             Press ? for keyboard shortcuts
           </p>
-          <p className="font-pixel text-[#00f5ff] neon-blink tracking-widest" style={{ fontSize: 'clamp(6px, 0.8vw, 9px)' }}>
+          <p className="font-pixel text-[#e91e8c] neon-blink tracking-widest" style={{ fontSize: 'clamp(6px, 0.8vw, 9px)' }}>
             ▶ CLICK ANYWHERE TO BEGIN
           </p>
         </div>
       )}
 
       {/* Corner version tag */}
-      <div className="absolute bottom-4 left-4 font-pixel text-[7px] text-white/20 z-10">
+      <div className="absolute bottom-4 left-4 font-pixel text-[7px] text-[#c2185b]/30 z-10">
         v0.1 2026
       </div>
     </div>
