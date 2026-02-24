@@ -12,6 +12,7 @@ interface DrawingCanvasProps {
 
 export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanvasProps = {}) {
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null)
+  const haloCanvasRef = useRef<HTMLCanvasElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   const [activeTool, setActiveTool] = useState<DrawTool>('pencil')
@@ -36,7 +37,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   const drawing = useDrawing(drawingCanvasRef, initialStrokes)
 
-  // Resize canvas to match container; repaint initial strokes after first resize
+  // Resize both canvases; repaint initial strokes after first resize
   useEffect(() => {
     let painted = false
     const resize = () => {
@@ -48,7 +49,10 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         drawingCanvasRef.current.width = w
         drawingCanvasRef.current.height = h
       }
-      // Paint once after canvas has real dimensions
+      if (haloCanvasRef.current) {
+        haloCanvasRef.current.width = w
+        haloCanvasRef.current.height = h
+      }
       if (!painted && initialStrokes?.length) {
         painted = true
         drawing.redrawFromHistory()
@@ -60,6 +64,15 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     return () => ro.disconnect()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Redraw halo whenever selection changes
+  useEffect(() => {
+    const haloCanvas = haloCanvasRef.current
+    if (!haloCanvas) return
+    const haloCtx = haloCanvas.getContext('2d')
+    if (!haloCtx) return
+    drawing.drawSelectionHalo(haloCtx, haloCanvas.width, haloCanvas.height)
+  }, [selectedStrokeId, drawing])
 
   // Delete key handler for eraser-selected stroke
   useEffect(() => {
@@ -86,6 +99,23 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     },
     [transform]
   )
+
+  // Declared before handlePointerUp to avoid hoisting errors
+  const scheduleSave = useCallback(() => {
+    if (!drawingIdRef.current) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch(`/api/drawings/${drawingIdRef.current}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ strokes: drawing.getStrokes() }),
+        })
+      } catch {
+        // silent — auto-save failure is non-critical
+      }
+    }, 1500)
+  }, [drawing])
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -152,22 +182,6 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
     },
     [activeTool, drawing, getEventPos, transform]
   )
-
-  const scheduleSave = useCallback(() => {
-    if (!drawingIdRef.current) return
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await fetch(`/api/drawings/${drawingIdRef.current}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ strokes: drawing.getStrokes() }),
-        })
-      } catch {
-        // silent — auto-save failure is non-critical
-      }
-    }, 1500)
-  }, [drawing])
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -318,10 +332,17 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         onWheel={handleWheel}
       >
         <div style={canvasStyle} className="absolute inset-0">
+          {/* Layer 1: freehand drawing */}
           <canvas
             ref={drawingCanvasRef}
             className="absolute inset-0 w-full h-full"
             style={{ touchAction: 'none' }}
+          />
+          {/* Layer 2: selection halo — transparent overlay, never receives pointer events */}
+          <canvas
+            ref={haloCanvasRef}
+            className="absolute inset-0 w-full h-full"
+            style={{ touchAction: 'none', pointerEvents: 'none' }}
           />
         </div>
 

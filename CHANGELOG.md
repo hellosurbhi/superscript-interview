@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## feat: selection halo + cursor feedback for eraser component-select
+**Date:** 2026-02-24
+
+### What changed and why
+
+When the eraser click-selects a stroke, the user now sees an amber/orange glow halo drawn around the selected shape and the cursor changes to a pointer (finger). Switching back to pencil or any other tool clears the selection and reverts the cursor to crosshair.
+
+**Halo implementation:**
+- Added `drawSelectionHalo(haloCtx, w, h)` to `useDrawing` — reads `selectedStrokeIdRef` and `completedStrokesRef` directly (no reactive deps)
+- For single-dot strokes: draws a `strokeStyle` ring + `shadowBlur` glow
+- For multi-point strokes: recomputes `perfect-freehand` path with `size + 8` (so halo sits outside the original stroke), fills with 18% opacity amber + `shadowBlur: 18` for soft glow
+- Added `haloCanvasRef` in `DrawingCanvas` — second transparent canvas inside the same CSS-transform div, `pointerEvents: none`
+- `useEffect` on `selectedStrokeId` state triggers `drawing.drawSelectionHalo(...)` on every selection change
+- Both canvases included in `ResizeObserver` so halo canvas stays correctly sized
+
+**Also fixed:** `scheduleSave` was declared after `handlePointerUp` referenced it, causing TS2448/2454 errors. Moved `scheduleSave` above `handlePointerUp`.
+
+**Also added to `useDrawing`:** `drawSelectionHalo` export; `getStrokes` and `redrawFromHistory` (already present from linter update, now fully wired).
+
+### Files modified
+- `src/hooks/useDrawing.ts` — Added `drawSelectionHalo`, exported it
+- `src/components/canvas/DrawingCanvas.tsx` — Added `haloCanvasRef`, halo canvas layer, halo redraw `useEffect`, moved `scheduleSave` before `handlePointerUp`
+
+---
+
 ## feat: redesign as SurbhiDraw — left sidebar, click-anywhere landing, component-level eraser
 **Date:** 2026-02-24
 
