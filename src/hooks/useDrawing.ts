@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import { getStroke } from 'perfect-freehand'
 import type { DrawTool, StrokePoint, CompletedStroke, TextStroke } from '@/types/drawing'
 import { TOOL_OPTIONS, isTextStroke } from '@/types/drawing'
@@ -91,6 +91,8 @@ function drawStrokeToCtx(
   ctx.restore()
 }
 
+const SESSION_KEY = 'surbhidraw_strokes'
+
 export function useDrawing(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   initialStrokes?: CompletedStroke[]
@@ -100,6 +102,26 @@ export function useDrawing(
   const completedStrokesRef = useRef<CompletedStroke[]>(initialStrokes ?? [])
   const animFrameRef = useRef<number | null>(null)
   const selectedStrokeIdRef = useRef<string | null>(null)
+
+  // Restore from sessionStorage on mount (skip for shared drawings)
+  useEffect(() => {
+    if (initialStrokes?.length) return
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY)
+      if (saved) {
+        completedStrokesRef.current = JSON.parse(saved) as CompletedStroke[]
+        // ResizeObserver will repaint on mount after canvas is sized
+      }
+    } catch { /* quota exceeded or parse error */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const saveToSession = useCallback(() => {
+    if (initialStrokes?.length) return
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(completedStrokesRef.current))
+    } catch { /* ignore quota */ }
+  }, [initialStrokes?.length])
 
   const redrawAll = useCallback(
     (
@@ -140,34 +162,23 @@ export function useDrawing(
 
   const startStroke = useCallback(
     (
-      e: PointerEvent,
+      x: number,
+      y: number,
+      pressure: number,
       tool: Extract<DrawTool, 'pencil' | 'brush' | 'highlighter' | 'eraser'>,
       color: string,
       size: number,
-      opacity: number,
-      transform: { scale: number; tx: number; ty: number }
+      opacity: number
     ) => {
+      isDrawingRef.current = true
+      currentPointsRef.current = [{ x, y, pressure }]
       const canvas = canvasRef.current
       if (!canvas) return
-
-      isDrawingRef.current = true
-      canvas.setPointerCapture(e.pointerId)
-
-      const rect = canvas.getBoundingClientRect()
-      const x = (e.clientX - rect.left - transform.tx) / transform.scale
-      const y = (e.clientY - rect.top - transform.ty) / transform.scale
-      const pressure = e.pressure || 0.5
-
-      currentPointsRef.current = [{ x, y, pressure }]
-
       const ctx = canvas.getContext('2d')
       if (!ctx) return
-
       const animate = () => {
         redrawAll(ctx, completedStrokesRef.current, currentPointsRef.current, tool, color, size, opacity)
-        if (isDrawingRef.current) {
-          animFrameRef.current = requestAnimationFrame(animate)
-        }
+        if (isDrawingRef.current) animFrameRef.current = requestAnimationFrame(animate)
       }
       animFrameRef.current = requestAnimationFrame(animate)
     },
@@ -175,18 +186,11 @@ export function useDrawing(
   )
 
   const continueStroke = useCallback(
-    (e: PointerEvent, transform: { scale: number; tx: number; ty: number }) => {
-      if (!isDrawingRef.current || !canvasRef.current) return
-
-      const canvas = canvasRef.current
-      const rect = canvas.getBoundingClientRect()
-      const x = (e.clientX - rect.left - transform.tx) / transform.scale
-      const y = (e.clientY - rect.top - transform.ty) / transform.scale
-      const pressure = e.pressure || 0.5
-
+    (x: number, y: number, pressure: number) => {
+      if (!isDrawingRef.current) return
       currentPointsRef.current.push({ x, y, pressure })
     },
-    [canvasRef]
+    []
   )
 
   const endStroke = useCallback(
@@ -222,8 +226,9 @@ export function useDrawing(
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       redrawAll(ctx, completedStrokesRef.current)
+      saveToSession()
     },
-    [canvasRef, redrawAll]
+    [canvasRef, redrawAll, saveToSession]
   )
 
   const cancelCurrentStroke = useCallback(() => {
@@ -382,7 +387,8 @@ export function useDrawing(
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (ctx) redrawAll(ctx, completedStrokesRef.current)
-  }, [canvasRef, redrawAll])
+    saveToSession()
+  }, [canvasRef, redrawAll, saveToSession])
 
   const clearCanvas = useCallback(() => {
     completedStrokesRef.current = []
@@ -392,7 +398,8 @@ export function useDrawing(
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
-  }, [canvasRef])
+    saveToSession()
+  }, [canvasRef, saveToSession])
 
   const undoLast = useCallback(() => {
     completedStrokesRef.current.pop()
@@ -401,7 +408,8 @@ export function useDrawing(
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (ctx) redrawAll(ctx, completedStrokesRef.current)
-  }, [canvasRef, redrawAll])
+    saveToSession()
+  }, [canvasRef, redrawAll, saveToSession])
 
   const drawSelectionHalo = useCallback(
     (haloCtx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
@@ -477,8 +485,9 @@ export function useDrawing(
       completedStrokesRef.current.push(stroke)
       const ctx = canvasRef.current?.getContext('2d')
       if (ctx) redrawAll(ctx, completedStrokesRef.current)
+      saveToSession()
     },
-    [canvasRef, redrawAll]
+    [canvasRef, redrawAll, saveToSession]
   )
 
   const getStrokes = useCallback(() => completedStrokesRef.current, [])

@@ -92,9 +92,8 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   const drawing = useDrawing(drawingCanvasRef, initialStrokes)
 
-  // Resize both canvases; repaint initial strokes after first resize
+  // Resize both canvases and always repaint — canvas clears on dimension change
   useEffect(() => {
-    let painted = false
     const resize = () => {
       const wrapper = wrapperRef.current
       if (!wrapper) return
@@ -108,10 +107,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
         haloCanvasRef.current.width = w
         haloCanvasRef.current.height = h
       }
-      if (!painted && initialStrokes?.length) {
-        painted = true
-        drawing.redrawFromHistory()
-      }
+      drawing.redrawFromHistory()
     }
     resize()
     const ro = new ResizeObserver(resize)
@@ -165,9 +161,9 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
   const getEventPos = useCallback(
     (e: PointerEvent | React.PointerEvent) => {
-      const canvas = drawingCanvasRef.current
-      if (!canvas) return { x: 0, y: 0 }
-      const rect = canvas.getBoundingClientRect()
+      const wrapper = wrapperRef.current
+      if (!wrapper) return { x: 0, y: 0 }
+      const rect = wrapper.getBoundingClientRect()
       return {
         x: (e.clientX - rect.left - transform.translateX) / transform.scale,
         y: (e.clientY - rect.top - transform.translateY) / transform.scale,
@@ -239,14 +235,12 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
       hasMovedRef.current = false
       isDraggingRef.current = false
 
-      const transformArgs = { scale: transform.scale, tx: transform.translateX, ty: transform.translateY }
-
       // Text tool: don't start a freehand stroke; overlay will open on pointer-up tap
       if (activeTool === 'text') return
 
       // Shift or explicit eraser → start erase stroke immediately
       if (e.shiftKey || activeTool === 'eraser') {
-        drawing.startStroke(e.nativeEvent, 'eraser', activeColor, strokeWidth, 1, transformArgs)
+        drawing.startStroke(pos.x, pos.y, e.nativeEvent.pressure || 0.5, 'eraser', activeColor, strokeWidth, 1)
         return
       }
 
@@ -273,15 +267,12 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
       setSelectedStrokeId(null)
       drawing.selectedStrokeId.current = null
       drawing.startStroke(
-        e.nativeEvent,
+        pos.x, pos.y, e.nativeEvent.pressure || 0.5,
         activeTool as 'pencil' | 'brush' | 'highlighter',
-        activeColor,
-        strokeWidth,
-        1,
-        transformArgs
+        activeColor, strokeWidth, 1
       )
     },
-    [activeTool, activeColor, strokeWidth, drawing, getEventPos, transform, selectedStrokeId, textOverlay, commitTextOverlay]
+    [activeTool, activeColor, strokeWidth, drawing, getEventPos, selectedStrokeId, textOverlay, commitTextOverlay]
   )
 
   const handlePointerMove = useCallback(
@@ -326,17 +317,9 @@ export default function DrawingCanvas({ drawingId, initialStrokes }: DrawingCanv
 
       if (!drawing.isDrawing.current) return
 
-      const transformArgs = { scale: transform.scale, tx: transform.translateX, ty: transform.translateY }
-
-      // Eraser stroke (shift or explicit eraser)
-      if ((e.shiftKey || activeTool === 'eraser') && drawing.isDrawing.current) {
-        drawing.continueStroke(e.nativeEvent, transformArgs)
-        return
-      }
-
-      drawing.continueStroke(e.nativeEvent, transformArgs)
+      drawing.continueStroke(pos.x, pos.y, e.nativeEvent.pressure || 0.5)
     },
-    [activeTool, drawing, getEventPos, transform, selectedStrokeId]
+    [activeTool, drawing, getEventPos, selectedStrokeId]
   )
 
   const handlePointerUp = useCallback(

@@ -325,6 +325,12 @@ export default function WelcomeCanvas() {
             your heart desires — and let&apos;s see if we can help
             you animate it (still in progress)
           </p>
+          <p
+            className="font-pixel text-white/20 leading-relaxed mb-3"
+            style={{ fontSize: 'clamp(4px, 0.55vw, 7px)' }}
+          >
+            tip: your drawing is saved for this session,<br />but not between sessions (yet)
+          </p>
           <p className="font-pixel text-[#00f5ff] neon-blink tracking-widest" style={{ fontSize: 'clamp(6px, 0.8vw, 9px)' }}>
             ▶ CLICK ANYWHERE TO BEGIN
           </p>
