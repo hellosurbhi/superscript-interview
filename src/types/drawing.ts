@@ -102,9 +102,9 @@ export const TOOL_OPTIONS = {
 export const PALETTE_COLORS = [
   '#000000', '#434343', '#666666', '#ffffff',
   '#ff0000', '#ff6600', '#ffff00', '#00ff00',
-  '#00ffff', '#0000ff', '#9900ff', '#ff00ff',
-  '#00f5ff', '#ff006e', '#8338ec', '#06d6a0',
-  '#ffd60a', '#fb5607', '#3a0ca3', '#4cc9f0',
+  '#f72585', '#0000ff', '#9900ff', '#ff00ff',
+  '#ff4d94', '#ff006e', '#8338ec', '#06d6a0',
+  '#ffd60a', '#fb5607', '#3a0ca3', '#ff85b3',
 ] as const
 
 export const FREEHAND_TOOLS: DrawTool[] = ['pencil', 'brush', 'highlighter', 'eraser']

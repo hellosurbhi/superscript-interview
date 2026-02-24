@@ -87,16 +87,16 @@ export default function Toolbar({
       {/* Stroke width slider — visible for freehand tools */}
       {isDrawTool && (
         <div className="flex items-center gap-3 px-4 pt-2 pb-1">
-          <span className="font-pixel text-[7px] text-[#00f5ff] w-6">{strokeWidth}</span>
+          <span className="font-pixel text-[7px] text-[#ff006e] w-6">{strokeWidth}</span>
           <input
             type="range"
             min={1}
             max={60}
             value={strokeWidth}
             onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
-            className="flex-1 h-1 accent-[#00f5ff] cursor-pointer"
+            className="flex-1 h-1 accent-[#ff006e] cursor-pointer"
             style={{
-              background: `linear-gradient(to right, #00f5ff ${(strokeWidth / 60) * 100}%, #333 0)`,
+              background: `linear-gradient(to right, #ff006e ${(strokeWidth / 60) * 100}%, #333 0)`,
               WebkitAppearance: 'none',
               borderRadius: '2px',
             }}
@@ -125,14 +125,14 @@ export default function Toolbar({
                 w-11 h-11 rounded text-lg
                 transition-all duration-150
                 ${isActive
-                  ? 'bg-[#00f5ff]/15 border border-[#00f5ff] text-[#00f5ff] shadow-[0_0_8px_rgba(0,245,255,0.3)]'
+                  ? 'bg-[#ff006e]/15 border border-[#ff006e] text-[#ff006e] shadow-[0_0_8px_rgba(255,0,110,0.3)]'
                   : 'border border-white/10 text-white/60 hover:border-white/30 hover:text-white/90 hover:bg-white/5'
                 }
               `}
             >
               <span className="text-sm leading-none select-none">{icon}</span>
               {isActive && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#00f5ff] shadow-[0_0_6px_#00f5ff]" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#ff006e] shadow-[0_0_6px_#ff006e]" />
               )}
             </button>
           )

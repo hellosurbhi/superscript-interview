@@ -56,7 +56,7 @@ export default function SharedDrawPage() {
         </p>
         <a
           href="/draw"
-          className="font-pixel text-[9px] text-[#00f5ff] underline underline-offset-4 hover:opacity-70 transition-opacity"
+          className="font-pixel text-[9px] text-[#ff006e] underline underline-offset-4 hover:opacity-70 transition-opacity"
         >
           Start a new one →
         </a>

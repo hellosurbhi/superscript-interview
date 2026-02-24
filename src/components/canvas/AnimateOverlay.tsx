@@ -28,7 +28,7 @@ interface AnimateOverlayProps {
 }
 
 const ANIM_DURATION = 7000
-const LOADER_COLORS = ['#00f5ff', '#ff006e', '#8338ec', '#06d6a0', '#ffd60a']
+const LOADER_COLORS = ['#f72585', '#ff006e', '#8338ec', '#06d6a0', '#ffd60a']
 const BLOCK_SIZE = 10
 
 // ── Pixel loader canvas ────────────────────────────────────────────────────
@@ -279,10 +279,10 @@ export default function AnimateOverlay({
         className="fixed bottom-0 left-0 right-0 z-[100] flex flex-col"
         style={{
           height: '260px',
-          background: 'rgba(13,13,26,0.97)',
+          background: 'rgba(26,8,18,0.97)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(0,245,255,0.15)',
+          borderTop: '1px solid rgba(255,0,110,0.15)',
           animation: 'slideUpFade 300ms ease-out both',
         }}
       >
@@ -295,8 +295,8 @@ export default function AnimateOverlay({
         </button>
 
         <div className="flex flex-col gap-3 px-6 pt-5 pb-4 h-full">
-          <div className="font-pixel text-[9px] text-[#00f5ff] tracking-widest"
-            style={{ textShadow: '0 0 8px #00f5ff88' }}>
+          <div className="font-pixel text-[9px] text-[#ff006e] tracking-widest"
+            style={{ textShadow: '0 0 8px #ff006e88' }}>
             ⚡ ANIMATE YOUR DRAWING
           </div>
 
@@ -306,8 +306,8 @@ export default function AnimateOverlay({
             onChange={e => setPromptText(e.target.value)}
             placeholder="Describe the animation... (e.g. make the shapes bounce, rain drops falling, particles bursting outward)"
             rows={3}
-            className="flex-1 resize-none rounded border border-white/10 bg-white/5 text-white/80 text-sm px-3 py-2 placeholder:text-white/20 focus:outline-none focus:border-[#00f5ff]/40 focus:bg-white/8 transition-colors"
-            style={{ caretColor: '#00f5ff', fontFamily: 'inherit' }}
+            className="flex-1 resize-none rounded border border-white/10 bg-white/5 text-white/80 text-sm px-3 py-2 placeholder:text-white/20 focus:outline-none focus:border-[#ff006e]/40 focus:bg-white/8 transition-colors"
+            style={{ caretColor: '#ff006e', fontFamily: 'inherit' }}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey && promptText.trim()) {
                 e.preventDefault()
@@ -322,13 +322,13 @@ export default function AnimateOverlay({
             className="w-full h-10 rounded font-pixel text-[8px] tracking-widest transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               background: promptText.trim()
-                ? 'linear-gradient(135deg, #00f5ff22, #8338ec22)'
+                ? 'linear-gradient(135deg, #ff006e22, #8338ec22)'
                 : 'transparent',
               border: promptText.trim()
-                ? '1px solid #00f5ff88'
+                ? '1px solid #ff006e88'
                 : '1px solid rgba(255,255,255,0.1)',
-              color: promptText.trim() ? '#00f5ff' : 'rgba(255,255,255,0.3)',
-              boxShadow: promptText.trim() ? '0 0 12px rgba(0,245,255,0.15)' : 'none',
+              color: promptText.trim() ? '#ff006e' : 'rgba(255,255,255,0.3)',
+              boxShadow: promptText.trim() ? '0 0 12px rgba(255,0,110,0.15)' : 'none',
             }}
           >
             GENERATE ANIMATION
@@ -341,13 +341,13 @@ export default function AnimateOverlay({
   // ── Loading phase ───────────────────────────────────────────────────────
   if (phase.name === 'loading') {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-[#0d0d1a]">
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-[#1a0812]">
         <PixelLoader />
 
         <div className="flex flex-col items-center gap-2">
           <div
-            className="font-pixel text-[10px] text-[#00f5ff] tracking-widest"
-            style={{ textShadow: '0 0 12px #00f5ff' }}
+            className="font-pixel text-[10px] text-[#ff006e] tracking-widest"
+            style={{ textShadow: '0 0 12px #ff006e' }}
           >
             GENERATING ANIMATION...
           </div>
@@ -359,7 +359,7 @@ export default function AnimateOverlay({
         {/* Fake progress pulse bar */}
         <div className="fixed bottom-0 left-0 right-0 h-0.5 overflow-hidden">
           <div
-            className="h-full bg-[#00f5ff]"
+            className="h-full bg-[#ff006e]"
             style={{ animation: 'loadingBar 2s ease-in-out infinite' }}
           />
         </div>
@@ -382,7 +382,7 @@ export default function AnimateOverlay({
   // ── Error phase ─────────────────────────────────────────────────────────
   if (phase.name === 'error') {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-[#0d0d1a]">
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-[#1a0812]">
         <div className="flex flex-col items-center gap-3 max-w-sm text-center px-6">
           <div className="font-pixel text-[9px] text-[#ff006e] tracking-widest"
             style={{ textShadow: '0 0 8px #ff006e' }}>
@@ -396,7 +396,7 @@ export default function AnimateOverlay({
         <div className="flex gap-3">
           <button
             onClick={handleRetry}
-            className="px-5 h-9 rounded border border-[#00f5ff]/40 text-[#00f5ff] font-pixel text-[7px] tracking-widest hover:bg-[#00f5ff]/10 transition-colors"
+            className="px-5 h-9 rounded border border-[#ff006e]/40 text-[#ff006e] font-pixel text-[7px] tracking-widest hover:bg-[#ff006e]/10 transition-colors"
           >
             TRY AGAIN
           </button>
@@ -413,7 +413,7 @@ export default function AnimateOverlay({
 
   // ── Playing phase ───────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-[100] bg-[#0d0d1a]">
+    <div className="fixed inset-0 z-[100] bg-[#1a0812]">
       {/* Animation canvas — fills the full screen */}
       <canvas
         ref={animCanvasRef}
@@ -427,10 +427,10 @@ export default function AnimateOverlay({
       <div
         className="fixed top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-2 rounded-full"
         style={{
-          background: 'rgba(13,13,26,0.92)',
+          background: 'rgba(26,8,18,0.92)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(0,245,255,0.15)',
+          border: '1px solid rgba(255,0,110,0.15)',
           boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
         }}
       >
@@ -470,10 +470,10 @@ export default function AnimateOverlay({
       {/* Progress bar */}
       <div className="fixed bottom-0 left-0 right-0 h-0.5 bg-white/5">
         <div
-          className="h-full bg-[#00f5ff] transition-none"
+          className="h-full bg-[#ff006e] transition-none"
           style={{
             width: `${progress * 100}%`,
-            boxShadow: '0 0 4px #00f5ff',
+            boxShadow: '0 0 4px #ff006e',
           }}
         />
       </div>
@@ -498,7 +498,7 @@ function ControlButton({
     <button
       onClick={onClick}
       className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all duration-150 hover:bg-white/8"
-      style={active ? { color: '#00f5ff' } : { color: 'rgba(255,255,255,0.6)' }}
+      style={active ? { color: '#ff006e' } : { color: 'rgba(255,255,255,0.6)' }}
     >
       <span className="text-sm leading-none">{icon}</span>
       <span className="font-pixel text-[5px] leading-none tracking-wider">{label}</span>

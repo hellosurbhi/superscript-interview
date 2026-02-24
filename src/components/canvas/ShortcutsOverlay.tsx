@@ -40,9 +40,9 @@ export default function ShortcutsOverlay({ onClose }: ShortcutsOverlayProps) {
       <div
         className="relative w-full max-w-xs mx-4 rounded overflow-hidden"
         style={{
-          background: '#0d0d1a',
-          border: '1px solid rgba(0,245,255,0.15)',
-          boxShadow: '0 0 60px rgba(0,245,255,0.06), 0 24px 64px rgba(0,0,0,0.6)',
+          background: '#1a0812',
+          border: '1px solid rgba(255,0,110,0.15)',
+          boxShadow: '0 0 60px rgba(255,0,110,0.06), 0 24px 64px rgba(0,0,0,0.6)',
         }}
       >
         {/* Header */}
@@ -51,7 +51,7 @@ export default function ShortcutsOverlay({ onClose }: ShortcutsOverlayProps) {
         >
           <span
             className="font-pixel text-[8px] tracking-widest"
-            style={{ color: '#00f5ff', textShadow: '0 0 8px #00f5ff66' }}
+            style={{ color: '#ff006e', textShadow: '0 0 8px #ff006e66' }}
           >
             KEYBOARD SHORTCUTS
           </span>

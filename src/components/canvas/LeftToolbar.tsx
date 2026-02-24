@@ -83,8 +83,8 @@ export default function LeftToolbar({
     <div
       className="fixed left-0 top-0 bottom-0 z-50 flex flex-col items-center gap-2 py-4 px-2 w-14"
       style={{
-        background: 'rgba(13, 13, 26, 0.95)',
-        borderRight: '1px solid rgba(0, 245, 255, 0.10)',
+        background: 'rgba(26, 8, 18, 0.95)',
+        borderRight: '1px solid rgba(255, 0, 110, 0.10)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         overflow: 'visible',
@@ -92,7 +92,7 @@ export default function LeftToolbar({
     >
       {/* Brand mark */}
       <div
-        className="font-pixel text-[5px] text-[#00f5ff]/60 mb-1 tracking-widest select-none"
+        className="font-pixel text-[5px] text-[#ff006e]/60 mb-1 tracking-widest select-none"
         style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
       >
         SD
@@ -117,13 +117,13 @@ export default function LeftToolbar({
                 comingSoon
                   ? 'opacity-25 cursor-not-allowed border border-white/5 text-white/40'
                   : isActive
-                    ? 'bg-[#00f5ff]/15 border border-[#00f5ff] text-[#00f5ff] shadow-[0_0_8px_rgba(0,245,255,0.25)]'
+                    ? 'bg-[#ff006e]/15 border border-[#ff006e] text-[#ff006e] shadow-[0_0_8px_rgba(255,0,110,0.25)]'
                     : 'border border-white/10 text-white/60 hover:border-white/30 hover:text-white/90 hover:bg-white/5',
               ].join(' ')}
             >
               <span className="leading-none">{icon}</span>
               {isActive && !comingSoon && (
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#00f5ff] shadow-[0_0_6px_#00f5ff]" />
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-[#ff006e] shadow-[0_0_6px_#ff006e]" />
               )}
             </button>
 
@@ -134,14 +134,14 @@ export default function LeftToolbar({
             {/* Font size indicator — shown below text tool when active */}
             {id === 'text' && isActive && (
               <div className="flex flex-col items-center mt-1 gap-1">
-                <span className="font-pixel text-[5px] text-[#00f5ff]">{strokeWidthToFontSize(strokeWidth)}px</span>
+                <span className="font-pixel text-[5px] text-[#ff006e]">{strokeWidthToFontSize(strokeWidth)}px</span>
               </div>
             )}
 
             {/* Vertical thickness slider — shown below pencil when active */}
             {id === 'pencil' && isActive && (
               <div className="flex flex-col items-center mt-1 gap-1">
-                <span className="font-pixel text-[5px] text-[#00f5ff]">{strokeWidth}px</span>
+                <span className="font-pixel text-[5px] text-[#ff006e]">{strokeWidth}px</span>
                 <div className="h-20 flex items-center justify-center overflow-hidden">
                   <input
                     type="range"
@@ -149,7 +149,7 @@ export default function LeftToolbar({
                     max={60}
                     value={strokeWidth}
                     onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
-                    className="accent-[#00f5ff] cursor-pointer"
+                    className="accent-[#ff006e] cursor-pointer"
                     style={{ transform: 'rotate(-90deg)', width: '72px' }}
                     title="Stroke thickness"
                   />
@@ -166,15 +166,15 @@ export default function LeftToolbar({
                 <span
                   className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
                   style={{
-                    background: 'rgba(13,13,26,0.97)',
-                    border: '1px solid rgba(0,245,255,0.2)',
-                    boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+                    background: 'rgba(26,8,18,0.97)',
+                    border: '1px solid rgba(255,0,110,0.2)',
+                    boxShadow: '0 0 8px rgba(255,0,110,0.1)',
                   }}
                 >
                   {label}
                 </span>
                 {shortcut && (
-                  <span className="font-pixel text-[5px] text-[#00f5ff]/60 whitespace-nowrap px-1">
+                  <span className="font-pixel text-[5px] text-[#ff006e]/60 whitespace-nowrap px-1">
                     {shortcut}
                   </span>
                 )}
@@ -206,14 +206,14 @@ export default function LeftToolbar({
             <span
               className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
               style={{
-                background: 'rgba(13,13,26,0.97)',
-                border: '1px solid rgba(0,245,255,0.2)',
-                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+                background: 'rgba(26,8,18,0.97)',
+                border: '1px solid rgba(255,0,110,0.2)',
+                boxShadow: '0 0 8px rgba(255,0,110,0.1)',
               }}
             >
               Undo
             </span>
-            <span className="font-pixel text-[5px] text-[#00f5ff]/60 whitespace-nowrap px-1">
+            <span className="font-pixel text-[5px] text-[#ff006e]/60 whitespace-nowrap px-1">
               ⌘Z  ·  Delete (no sel.)
             </span>
           </div>
@@ -236,7 +236,7 @@ export default function LeftToolbar({
             <span
               className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
               style={{
-                background: 'rgba(13,13,26,0.97)',
+                background: 'rgba(26,8,18,0.97)',
                 border: '1px solid rgba(255,0,110,0.2)',
                 boxShadow: '0 0 8px rgba(255,0,110,0.1)',
               }}
@@ -264,14 +264,14 @@ export default function LeftToolbar({
               ? 'border-[#ff006e]/60 text-[#ff006e] bg-[#ff006e]/10'
               : shareState === 'saving'
                 ? 'border-white/10 text-white/30 animate-pulse cursor-not-allowed'
-                : 'border-white/10 text-white/60 hover:border-[#00f5ff]/50 hover:text-[#00f5ff] hover:bg-[#00f5ff]/5',
+                : 'border-white/10 text-white/60 hover:border-[#ff006e]/50 hover:text-[#ff006e] hover:bg-[#ff006e]/5',
           ].join(' ')}
         >
           {shareState === 'saving' ? '…' : shareState === 'error' ? '✕' : '↗'}
         </button>
 
         {expiresAt && shareState !== 'error' && (
-          <span className="font-pixel text-[4px] text-[#00f5ff]/40 leading-none">
+          <span className="font-pixel text-[4px] text-[#ff006e]/40 leading-none">
             {Math.max(0, Math.ceil((expiresAt - Date.now()) / 3_600_000))}h
           </span>
         )}
@@ -281,9 +281,9 @@ export default function LeftToolbar({
             <span
               className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
               style={{
-                background: 'rgba(13,13,26,0.97)',
-                border: '1px solid rgba(0,245,255,0.2)',
-                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+                background: 'rgba(26,8,18,0.97)',
+                border: '1px solid rgba(255,0,110,0.2)',
+                boxShadow: '0 0 8px rgba(255,0,110,0.1)',
               }}
             >
               Share  ·  ↗
@@ -299,7 +299,7 @@ export default function LeftToolbar({
           onMouseEnter={() => setHoveredTarget('shortcuts')}
           onMouseLeave={() => setHoveredTarget(null)}
           title="Keyboard shortcuts (?)"
-          className="flex items-center justify-center w-10 h-10 rounded border border-white/8 text-white/25 hover:border-[#00f5ff]/30 hover:text-[#00f5ff]/70 hover:bg-[#00f5ff]/5 transition-all duration-150 font-pixel text-[9px]"
+          className="flex items-center justify-center w-10 h-10 rounded border border-white/8 text-white/25 hover:border-[#ff006e]/30 hover:text-[#ff006e]/70 hover:bg-[#ff006e]/5 transition-all duration-150 font-pixel text-[9px]"
         >
           ?
         </button>
@@ -308,14 +308,14 @@ export default function LeftToolbar({
             <span
               className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
               style={{
-                background: 'rgba(13,13,26,0.97)',
-                border: '1px solid rgba(0,245,255,0.2)',
-                boxShadow: '0 0 8px rgba(0,245,255,0.1)',
+                background: 'rgba(26,8,18,0.97)',
+                border: '1px solid rgba(255,0,110,0.2)',
+                boxShadow: '0 0 8px rgba(255,0,110,0.1)',
               }}
             >
               Shortcuts
             </span>
-            <span className="font-pixel text-[5px] text-[#00f5ff]/60 whitespace-nowrap px-1">
+            <span className="font-pixel text-[5px] text-[#ff006e]/60 whitespace-nowrap px-1">
               ?
             </span>
           </div>

@@ -36,7 +36,7 @@ export default function ColorPalette({ activeColor, onColorSelect, onClose }: Co
       }}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="font-pixel text-[8px] text-[#00f5ff] tracking-wider">COLOR</span>
+        <span className="font-pixel text-[8px] text-[#ff006e] tracking-wider">COLOR</span>
         <button
           onClick={onClose}
           className="text-white/40 hover:text-white/80 transition-colors text-sm w-8 h-8 flex items-center justify-center"
@@ -54,7 +54,7 @@ export default function ColorPalette({ activeColor, onColorSelect, onClose }: Co
             className={`
               w-full aspect-square rounded-sm transition-all duration-100
               ${color === activeColor
-                ? 'ring-2 ring-[#00f5ff] ring-offset-1 ring-offset-[#0d0d1a] scale-110'
+                ? 'ring-2 ring-[#ff006e] ring-offset-1 ring-offset-[#1a0812] scale-110'
                 : 'hover:scale-110'
               }
             `}
