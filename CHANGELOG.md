@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## fix: share button crash — SyntheticEvent passed as animationCode to JSON.stringify
+**Date:** 2026-02-24
+**Commit:** b5201d0
+
+### Root cause
+`LeftToolbar.tsx:253` had `onClick={onShare}` (direct reference). React calls `onShare(syntheticMouseEvent)`, and since `handleShare` has signature `(animationCode?: string, animationPrompt?: string)`, the click event became `animationCode`. The SyntheticEvent is truthy, so `animationCode ?? null` kept the event object. `JSON.stringify({ ..., animation_code: SyntheticEvent })` then hit a circular reference inside React's fiber node (`_targetInst.return` → parent fiber → `child` → back), throwing "Converting circular structure to JSON". The catch block swallowed it silently, setting `shareState('error')` with no log. No network call was ever made.
+
+### Fix
+- `LeftToolbar.tsx` — Changed `onClick={onShare}` → `onClick={() => onShare()}`. Wrapping in an arrow function prevents the click event from being forwarded as an argument.
+- `DrawingCanvas.tsx` — Added `console.error('[handleShare]', err)` to the main share catch block so future failures are always visible.
+- `DrawingCanvas.tsx` — Added `console.error('[handleShare] animation PUT failed:', err)` to the silent `.catch(() => {})` in the already-shared branch.
+- `DrawingCanvas.tsx` — Wrapped `canvas.toDataURL()` in its own try/catch: image capture failure now logs and falls back to `null` instead of aborting the entire share.
+
+### Files affected
+- `src/components/canvas/LeftToolbar.tsx` — root cause fix (1 char change)
+- `src/components/canvas/DrawingCanvas.tsx` — logging + toDataURL guard
+
 ## feat: keyboard shortcuts overlay — ?, sidebar button, Escape to close
 **Date:** 2026-02-24
 **Commit:** fc0bf40
