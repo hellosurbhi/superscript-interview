@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## fix: session parser filters system-injected messages + split prompt/response display
+**Date:** 2026-02-25
+**Commit:** 5472ebd
+
+### What changed
+**scripts/parse-sessions.js:**
+- Changed tool_result filter from `every()` to `some()` — any message containing ANY tool_result block is now treated as a tool response, not a user prompt
+- Added `isSystemInjectedMessage()` helper that filters out: skill/command markdown expansions (lines starting with `# Heading`), context compaction summaries ("This session is being continued..."), `[Request interrupted]` signals, `[Image:]` path descriptions, compact echo messages (`❯` prefix), and GSD plan submissions ("Implement the following plan:")
+- Added `queue-operation` to the known event types list and skip list (encountered in the `6e14b79f` session)
+- Regenerated `public/session.json`: 7 sessions → 10 sessions (added ec5c902e, 5a4e8210, 6e14b79f which weren't in the previous parse); 39 turns → 30 turns (9 noisy/system-injected turn headers removed)
+
+**src/app/session/page.tsx:**
+- Added `truncateHeader()` helper: takes first line of user message, truncates to 120 chars, appends `…` if multiline or truncated
+- Card header now shows truncated text with CSS `overflow:hidden` + `textOverflow:ellipsis` — no more multi-paragraph walls of text as card headers
+- Expanded card body restructured into two visually distinct sections:
+  - **YOU block** (pink left border `rgba(255,0,110,0.45)`, warm tint): shows full user prompt text with "YOU" label
+  - **Claude response block** (muted gray left border `rgba(255,255,255,0.08)`): file pills, bash commands, diffs, assistant text — same content as before, just properly labeled
+- Search query highlighting works in both the truncated header AND the full YOU block in the expanded body
+
+### Why
+The session viewer was showing skill expansions, continuation summaries, and interrupt signals as top-level card headers — making it look like Claude's generated content was the user's prompts. The new `isSystemInjectedMessage()` guard filters these structurally, and the display changes make it immediately clear which text is the user's prompt vs Claude's response.
+
+### Files affected
+- `scripts/parse-sessions.js`
+- `src/app/session/page.tsx`
+- `public/session.json`
+
+---
+
 ## feat: animation history panel with auto-save, play, share, delete
 **Date:** 2026-02-25
 **Commit:** 907d120
