@@ -20,8 +20,8 @@ Next.js · TypeScript · Canvas API · Supabase · Claude API · Vercel
 
 ## Links
 
-- [Build log →](https://surbhi-draw.surbhi.tv/session)
-- [What's next →](https://surbhi-draw.surbhi.tv/enhancements)
+- [Build log](https://surbhi-draw.surbhi.tv/session)
+- [What's next](https://surbhi-draw.surbhi.tv/enhancements)
 
 ---
 
