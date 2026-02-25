@@ -335,7 +335,10 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
             trailColorIdx++
           }
 
-          if (girlX >= Math.floor(W / 2 - GIRL_W / 2)) phaseRef.current = 5
+          if (girlX >= Math.floor(W / 2 - GIRL_W / 2)) {
+            girlX = Math.floor(W / 2 - GIRL_W / 2)
+            phaseRef.current = 5
+          }
         }
 
         // Draw trail (fade each dot out)
