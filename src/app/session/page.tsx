@@ -227,7 +227,7 @@ export default function SessionPage() {
                         {/* Full user prompt — pink left border */}
                         {turn.userMessage && (
                           <div style={{ borderLeft: '3px solid rgba(255,0,110,0.45)', background: 'rgba(255,0,110,0.03)', padding: '8px 12px', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>
-                            <div className="font-pixel" style={{ fontSize: 5, color: 'rgba(255,0,110,0.5)', letterSpacing: '0.1em', marginBottom: 6 }}>YOU</div>
+                            <div className="font-pixel" style={{ fontSize: 5, color: 'rgba(255,0,110,0.5)', letterSpacing: '0.1em', marginBottom: 6 }}>MY PROMPT</div>
                             <div style={{ fontFamily: 'var(--font-geist-mono, monospace)', fontSize: 11, color: '#e0c8d0', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                               {searchQuery ? highlight(turn.userMessage, searchQuery) : turn.userMessage}
                             </div>
