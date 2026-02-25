@@ -373,6 +373,7 @@ export default function AnimateOverlay({
             className="flex-1 resize-none rounded border border-white/10 bg-white/5 text-white/80 text-sm px-3 py-2 placeholder:text-white/20 focus:outline-none focus:border-[#ff006e]/40 focus:bg-white/8 transition-colors"
             style={{ caretColor: '#ff006e', fontFamily: 'inherit' }}
             onKeyDown={e => {
+              if (e.key === 'Escape') { e.preventDefault(); onBack() }
               if (e.key === 'Enter' && !e.shiftKey && promptText.trim()) {
                 e.preventDefault()
                 handleGenerate(promptText.trim())
