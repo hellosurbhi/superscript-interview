@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## feat: JSONL session parser + structured /session viewer
+**Date:** 2026-02-24
+**Commit:** ef081d9
+
+### What changed
+Replaced the `session.txt` / `❯⏺` text-parsing approach with a proper structured pipeline: a Node script that parses all Claude Code `.jsonl` session files and emits `public/session.json`, plus a fully rewritten `/session` page that consumes it.
+
+### Files affected
+- `scripts/parse-sessions.js` — new parser script
+- `src/app/session/page.tsx` — full rewrite
+- `public/session.json` — generated output (490KB, 7 sessions, 39 turns)
+
+### scripts/parse-sessions.js
+Pure Node.js (no deps), idempotent. Run: `node scripts/parse-sessions.js`
+
+- Reads all 8 `.jsonl` files from `~/.claude/projects/-Users-surbhi-workspace-suprscript-interview/`
+- Filters noise: skips `tool_result` user messages (Claude API sends tool results as `user` role events — these were previously inflating turn count to 566), empty messages after stripping system injections, and `progress` / `system` / `file-history-snapshot` events
+- Groups events by `sessionId`, sorts by `timestamp` chronologically
+- Builds turns per session: each actual user message = one turn, collecting all subsequent `assistant`/`direct` events until next user message
+- Extracts from `tool_use` blocks in assistant content: `Read` → filesRead, `Write` → filesWritten, `Edit`/`MultiEdit` → filesModified + diff (old_string/new_string), `Bash` → bashCommands
+- Strips `<system-reminder>`, `<local-command-caveat>`, and other injected XML tags from user messages
+- Computes stats: 7 sessions, 39 turns, 441 tool calls, 24 files created, 20 modified, +2540/-1196 lines, 8h 59m total
+- Logs unrecognized event types to stdout
+
+### src/app/session/page.tsx
+- Fetches `/session.json` (not `session.txt`) on mount
+- Stats dashboard: 8 stat cards in auto-fill grid (sessions, turns, tool calls, files created, files modified, +lines, -lines, duration)
+- Session sections: `"Session N — Feb 24, 10:24am · 12m"` header with pink left border, slug below
+- Turn cards: user message as clickable header with `❯` accent, tool count pill; body collapsed by default
+- Body: file pills (green=written, amber=modified, gray=read, capped at 5+N more), bash commands with `$` prefix, diffs (red removed / green added), assistant text with code-fence rendering
+- Sticky controls: turn count, search input (filters + highlights), Expand All / Collapse All
+- Search auto-expands filtered turns; highlight uses yellow `<mark>`
+
+---
+
 ## feat: add 5s polling sync for /share/[token] views
 **Date:** 2026-02-24
 **Commit:** 81744b5
