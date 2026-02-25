@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## feat: add custom pencil favicon (amber on dark, matches app theme)
+**Date:** 2026-02-25
+**Commit:** 31048a3
+
+Created `src/app/icon.svg` — a 32×32 SVG pencil icon with dark rounded background (`#0a0a0a`) and amber pencil (`#f59e0b`/`#fcd34d` tip/`#fde68a` eraser). Next.js App Router auto-serves `app/icon.svg` as the site favicon, taking priority over the default `favicon.ico` in modern browsers. Title was already correct (`SurbhiDraw — Draw. Paint. Create.`) so no changes to `layout.tsx` were needed. Colors chosen to match the app's existing amber selected-stroke aesthetic and dark theme.
+
+**Files affected:** `src/app/icon.svg` (created)
+
+---
+
 ## fix: Escape key now closes AnimateOverlay from textarea
 **Date:** 2026-02-25
 **Commit:** f042bbd
