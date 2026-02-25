@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAnimation } from '@/lib/animations'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://superscript-interview.vercel.app'
 
 // POST /api/animations — create a new animation record linked to a drawing
 export async function POST(req: NextRequest) {
