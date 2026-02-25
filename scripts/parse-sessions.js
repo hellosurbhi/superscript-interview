@@ -176,7 +176,6 @@ for (const event of allEvents) {
 
 // Build sessions
 const sessions = []
-let sessionIndex = 1
 
 for (const [sessionId, events] of sessionMap) {
   // Find slug from first event that has one
@@ -242,13 +241,17 @@ for (const [sessionId, events] of sessionMap) {
   sessions.push({
     sessionId,
     slug,
-    index: sessionIndex++,
+    index: 0, // assigned after sort
     startTime,
     endTime,
     durationHuman: formatDuration(durationMs),
     turns,
   })
 }
+
+// Sort sessions chronologically and assign final indices
+sessions.sort((a, b) => (a.startTime > b.startTime ? 1 : -1))
+sessions.forEach((s, i) => { s.index = i + 1 })
 
 // ─── Stats ───────────────────────────────────────────────────────────────────
 
