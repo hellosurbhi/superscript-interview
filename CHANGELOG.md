@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## feat: animation history panel with auto-save, play, share, delete
+**Date:** 2026-02-25
+**Commit:** 907d120
+
+### What changed
+
+**Auto-save on generation** — previously animations were only saved to DB when the user clicked the SHARE button. Now, the moment Claude returns animation code, it is automatically saved to the animations table (linked to the drawing). `handleGenerate` in AnimateOverlay fires-and-forgets `onAnimationGenerated(code, prompt)` after `setPhase('playing')`. The SHARE button in playback controls now just shows the pre-saved URL via `AnimShareOverlay` (no longer triggers the API call).
+
+**New: `AnimationHistoryPanel`** — slide-out panel from the right side. Triggered by the `≡` button in LeftToolbar below Animate. Shows all animations for the current drawing as cards. Each card has:
+- `v{n}` version badge (v1 = oldest, newest at top)
+- Prompt text (truncated 1 line)
+- Relative timestamp (`just now`, `5m ago`, `2h ago`, `3d ago`)
+- Thumbnail: `<img>` if `preview_image` exists, else pink gradient placeholder
+- ▶ Play, ↗ Share (copies link, shows "✓ Copied!" 2s), 🗑 Delete (with loading state)
+- Empty state with friendly message when no animations yet
+
+**Play from history** — clicking ▶ on any card calls `handlePlayFromHistory(anim)` in DrawingCanvas, which sets `animationToPlay` and `activeTool = 'animate'`. AnimateOverlay then uses `animationToPlay.preview_image` as background and `animationToPlay.animation_code` as `preloadedCode`. `onAnimationGenerated` is passed as `undefined` when playing from history (no re-save).
+
+**Delete** — calls `DELETE /api/animations/{id}` (animation UUID). On success removes from `historyAnimations` state immediately.
+
+**History fetch** — when panel opens and `drawingIdRef.current` is set, fetches `GET /api/drawings/{id}/animations`. Also updated live via prepend when a new animation is generated.
+
+### API changes
+- `getAnimationsForDrawing` now returns `StoredAnimation[]` (full objects, `select('*')` instead of minimal fields)
+- `deleteAnimation(id)` added to `src/lib/animations.ts`
+- `POST /api/animations` now returns `animation` (full `StoredAnimation`) alongside existing fields
+- New `GET /api/drawings/[token]/animations/route.ts` — lists animations by drawing UUID
+- New `DELETE` handler in `src/app/api/animations/[token]/route.ts` — deletes by animation UUID
+
+### Prop rename
+`onShareAnimation` on AnimateOverlay renamed to `onAnimationGenerated` to reflect that it's now called automatically after generation, not on share click.
+
+### Files affected
+- `src/lib/animations.ts`
+- `src/app/api/animations/route.ts`
+- `src/app/api/animations/[token]/route.ts`
+- `src/app/api/drawings/[token]/animations/route.ts` (new)
+- `src/components/canvas/AnimationHistoryPanel.tsx` (new)
+- `src/components/canvas/AnimateOverlay.tsx`
+- `src/components/canvas/DrawingCanvas.tsx`
+- `src/components/canvas/LeftToolbar.tsx`
+
 ## feat: separate shareable links for drawings and animations
 **Date:** 2026-02-25
 **Commit:** 0f6db51
