@@ -19,6 +19,24 @@ Created `BUGS.md` to track 3 findings from the 2026-02-25 QA session:
 
 ---
 
+## fix: sort sessions chronologically by startTime after building
+**Date:** 2026-02-25
+**Commit:** f957484
+
+### What changed
+**scripts/parse-sessions.js:**
+- After the session-building loop, added `sessions.sort((a, b) => (a.startTime > b.startTime ? 1 : -1))` and `sessions.forEach((s, i) => { s.index = i + 1 })`
+- Removed the previous `let sessionIndex = 1` / `index: sessionIndex++` counter since indices are now assigned post-sort
+
+### Why
+Sessions were ordered by `Map` insertion order, which was determined by which session's first event appeared first when scanning all events sorted by timestamp. Noise events (`progress`, `file-history-snapshot`) from one session could appear before the first real event of another session, causing the session display order to be wrong. Explicit sort by `startTime` after building the array guarantees correct chronological ordering regardless of event noise.
+
+### Files affected
+- `scripts/parse-sessions.js`
+- `public/session.json`
+
+---
+
 ## fix: session parser filters system-injected messages + split prompt/response display
 **Date:** 2026-02-25
 **Commit:** 5472ebd
