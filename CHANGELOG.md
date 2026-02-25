@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## feat: girl stops at screen center instead of walking off-screen
+**Date:** 2026-02-25
+**Commit:** 640e491
+
+Changed the landing page pixel girl animation so she walks in from the left and stops at the horizontal center of the screen, rather than walking all the way off the right edge.
+
+**Changes:**
+- `src/components/welcome/WelcomeCanvas.tsx` line 338: phase transition condition changed from `girlX > W + GIRL_W` (exits right edge) to `girlX >= Math.floor(W / 2 - GIRL_W / 2)` (girl's midpoint reaches screen center)
+- `src/components/welcome/WelcomeCanvas.tsx` line 353: draw condition changed from `phaseRef.current === 4` to `phaseRef.current >= 4` so the girl stays visible at center after Phase 5 (subtitle + CTA) triggers
+
+**Result:** Girl walks in, stops centered, then subtitle "DRAW. CREATE. ANIMATE. 2026." and CTA button appear with her still visible in frame.
+
 ## fix: rename page title from SuprScript to SurbhiDraw
 **Date:** 2026-02-25
 **Commit:** 990de12
