@@ -23,7 +23,7 @@ interface AnimateOverlayProps {
   canvasHeight: number
   strokes: CompletedStroke[]
   onBack: () => void
-  onShareAnimation?: (animationCode: string, animationPrompt: string) => Promise<{ url: string }>
+  onAnimationGenerated?: (animationCode: string, animationPrompt: string) => Promise<{ url: string }>
   preloadedCode?: string
   viewerMode?: boolean
 }
@@ -113,7 +113,7 @@ export default function AnimateOverlay({
   canvasHeight,
   strokes,
   onBack,
-  onShareAnimation,
+  onAnimationGenerated,
   preloadedCode,
   viewerMode = false,
 }: AnimateOverlayProps) {
@@ -123,8 +123,9 @@ export default function AnimateOverlay({
   const [promptText, setPromptText] = useState('')
   const [loadingMessage, setLoadingMessage] = useState('')
   const [loadingBarPct, setLoadingBarPct] = useState(0)
-  const [animShareState, setAnimShareState] = useState<'idle' | 'saving' | 'done'>('idle')
+  const [animSaving, setAnimSaving] = useState(false)
   const [animShareUrl, setAnimShareUrl] = useState<string | null>(null)
+  const [showShareOverlay, setShowShareOverlay] = useState(false)
 
   // Playing phase refs
   const animCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -248,10 +249,24 @@ export default function AnimateOverlay({
       }
       const { code } = await res.json() as { code: string }
       setPhase({ name: 'playing', code, isPaused: false })
+
+      // Auto-save animation to DB (fire-and-forget; animation already playing)
+      if (onAnimationGenerated) {
+        setAnimSaving(true)
+        onAnimationGenerated(code, prompt)
+          .then(saved => {
+            setAnimShareUrl(saved.url)
+            setAnimSaving(false)
+          })
+          .catch((err: unknown) => {
+            console.error('[AnimateOverlay] auto-save failed:', err)
+            setAnimSaving(false)
+          })
+      }
     } catch (e) {
       setPhase({ name: 'error', message: String(e) })
     }
-  }, [canvasDataUrl, strokes])
+  }, [canvasDataUrl, strokes, onAnimationGenerated])
 
   const handlePauseToggle = useCallback(() => {
     if (phase.name !== 'playing') return
@@ -291,17 +306,9 @@ export default function AnimateOverlay({
     setPhase({ name: 'idle' })
   }, [])
 
-  const handleShareClick = useCallback(async () => {
-    if (phase.name !== 'playing' || !onShareAnimation || animShareState === 'saving') return
-    setAnimShareState('saving')
-    try {
-      const { url } = await onShareAnimation(phase.code, promptText)
-      setAnimShareUrl(url)
-      setAnimShareState('done')
-    } catch {
-      setAnimShareState('idle')
-    }
-  }, [phase, promptText, onShareAnimation, animShareState])
+  const handleShareClick = useCallback(() => {
+    if (animShareUrl) setShowShareOverlay(true)
+  }, [animShareUrl])
 
   // ── Loading message + progress bar ─────────────────────────────────────
   useEffect(() => {
@@ -511,11 +518,12 @@ export default function AnimateOverlay({
             {/* Regenerate */}
             <ControlButton onClick={handleRegenerate} label="REDO" icon="⚡" />
 
-            {onShareAnimation && (
+            {onAnimationGenerated && (
               <ControlButton
                 onClick={handleShareClick}
-                label={animShareState === 'saving' ? '...' : 'SHARE'}
+                label={animSaving ? '...' : 'SHARE'}
                 icon="↗"
+                active={!!animShareUrl && !animSaving}
               />
             )}
           </>
@@ -523,10 +531,10 @@ export default function AnimateOverlay({
       </div>
 
       {/* Animation share mini-overlay */}
-      {animShareUrl && (
+      {showShareOverlay && animShareUrl && (
         <AnimShareOverlay
           url={animShareUrl}
-          onDismiss={() => { setAnimShareUrl(null); setAnimShareState('idle') }}
+          onDismiss={() => setShowShareOverlay(false)}
         />
       )}
 

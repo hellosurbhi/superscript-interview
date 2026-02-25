@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAnimationByToken, touchAnimation } from '@/lib/animations'
+import { getAnimationByToken, touchAnimation, deleteAnimation } from '@/lib/animations'
 import { getDrawingById } from '@/lib/drawings'
 import type { CompletedStroke } from '@/types/drawing'
 
@@ -36,4 +36,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
     canvas_height: animation.canvas_height,
     drawing,
   })
+}
+
+// DELETE /api/animations/[token] — delete animation by UUID (token = animation.id)
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const { token: id } = await params
+  const ok = await deleteAnimation(id)
+  if (!ok) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  return NextResponse.json({ ok: true })
 }

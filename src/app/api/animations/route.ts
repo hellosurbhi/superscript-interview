@@ -36,11 +36,13 @@ export async function POST(req: NextRequest) {
       canvas_height ?? null
     )
 
+    const share_url = `${APP_URL}/share/animation/${animation.share_token}`
     return NextResponse.json({
       id: animation.id,
       share_token: animation.share_token,
-      share_url: `${APP_URL}/share/animation/${animation.share_token}`,
+      share_url,
       expiresAt,
+      animation,
     })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })

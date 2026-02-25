@@ -6,8 +6,10 @@ import { strokeWidthToFontSize } from '@/types/drawing'
 import { useDrawing } from '@/hooks/useDrawing'
 import LeftToolbar from './LeftToolbar'
 import AnimateOverlay from './AnimateOverlay'
+import AnimationHistoryPanel from './AnimationHistoryPanel'
 import ShareModal from './ShareModal'
 import ShortcutsOverlay from './ShortcutsOverlay'
+import type { StoredAnimation } from '@/lib/animations'
 
 const TAP_MOVE_THRESHOLD = 5
 const TAP_TIME_MS = 200
@@ -100,6 +102,11 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
   const [shareModal, setShareModal] = useState<{ url: string } | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // Animation history
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyAnimations, setHistoryAnimations] = useState<StoredAnimation[]>([])
+  const [animationToPlay, setAnimationToPlay] = useState<StoredAnimation | null>(null)
 
   // Interaction tracking refs
   const hasMovedRef = useRef(false)
@@ -248,6 +255,16 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
       }
     }, 1500)
   }, [drawing])
+
+  // Fetch history when panel opens
+  useEffect(() => {
+    if (!historyOpen || !drawingIdRef.current) return
+    fetch(`/api/drawings/${drawingIdRef.current}/animations`)
+      .then(r => r.ok ? r.json() as Promise<StoredAnimation[]> : Promise.resolve([]))
+      .then(data => setHistoryAnimations(data))
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyOpen])
 
   const commitTextOverlay = useCallback(() => {
     if (!textOverlay) return
@@ -544,7 +561,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
     }
   }, [ensureDrawingSaved, shareState])
 
-  const handleShareAnimation = useCallback(async (
+  const handleAnimationGenerated = useCallback(async (
     animationCode: string,
     animationPrompt: string
   ): Promise<{ url: string }> => {
@@ -561,10 +578,21 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
         canvas_height: animateSnapshot?.height ?? null,
       }),
     })
-    if (!res.ok) throw new Error('Failed to create animation share')
-    const { share_url } = await res.json() as { share_url: string }
+    if (!res.ok) throw new Error('Failed to save animation')
+    const { share_url, animation } = await res.json() as { share_url: string; animation: StoredAnimation }
+    setHistoryAnimations(prev => [animation, ...prev])
     return { url: share_url }
   }, [ensureDrawingSaved, animateSnapshot])
+
+  const handleDeleteAnimation = useCallback(async (animId: string) => {
+    const res = await fetch(`/api/animations/${animId}`, { method: 'DELETE' })
+    if (res.ok) setHistoryAnimations(prev => prev.filter(a => a.id !== animId))
+  }, [])
+
+  const handlePlayFromHistory = useCallback((anim: StoredAnimation) => {
+    setAnimationToPlay(anim)
+    setActiveTool('animate')
+  }, [])
 
   const canvasStyle = {
     transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
@@ -598,15 +626,23 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
       {/* Animate overlay — covers everything when animate tool is active */}
       {activeTool === 'animate' && animateSnapshot && (
         <AnimateOverlay
-          canvasDataUrl={animateSnapshot.dataUrl}
-          canvasWidth={animateSnapshot.width}
-          canvasHeight={animateSnapshot.height}
+          canvasDataUrl={animationToPlay?.preview_image ?? animateSnapshot.dataUrl}
+          canvasWidth={animationToPlay?.canvas_width ?? animateSnapshot.width}
+          canvasHeight={animationToPlay?.canvas_height ?? animateSnapshot.height}
           strokes={drawing.getStrokes()}
-          onBack={() => setActiveTool('pencil')}
-          onShareAnimation={handleShareAnimation}
-          preloadedCode={initialAnimationCode}
+          onBack={() => { setActiveTool('pencil'); setAnimationToPlay(null) }}
+          onAnimationGenerated={animationToPlay ? undefined : handleAnimationGenerated}
+          preloadedCode={animationToPlay?.animation_code ?? initialAnimationCode}
         />
       )}
+
+      <AnimationHistoryPanel
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        animations={historyAnimations}
+        onPlay={handlePlayFromHistory}
+        onDelete={handleDeleteAnimation}
+      />
 
       {/* Left toolbar */}
       <LeftToolbar
@@ -621,6 +657,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
         expiresAt={expiresAt}
         showTutorial={showTutorial}
         onShowShortcuts={() => setShowShortcuts(true)}
+        onShowHistory={() => setHistoryOpen(o => !o)}
       />
 
       {/* Canvas area */}

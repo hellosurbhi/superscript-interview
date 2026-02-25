@@ -16,6 +16,7 @@ interface LeftToolbarProps {
   expiresAt: number | null
   showTutorial: boolean
   onShowShortcuts: () => void
+  onShowHistory: () => void
 }
 
 const SIDEBAR_TOOLS: Array<{
@@ -31,7 +32,7 @@ const SIDEBAR_TOOLS: Array<{
   { id: 'animate', icon: '⚡', label: 'Animate', shortcut: '' },
 ]
 
-type HoverTarget = DrawTool | 'undo' | 'clear' | 'share' | 'shortcuts' | null
+type HoverTarget = DrawTool | 'undo' | 'clear' | 'share' | 'shortcuts' | 'history' | null
 
 export default function LeftToolbar({
   activeTool,
@@ -45,6 +46,7 @@ export default function LeftToolbar({
   expiresAt,
   showTutorial,
   onShowShortcuts,
+  onShowHistory,
 }: LeftToolbarProps) {
   const [hoveredTarget, setHoveredTarget] = useState<HoverTarget>(null)
 
@@ -183,6 +185,33 @@ export default function LeftToolbar({
           </div>
         )
       })}
+
+      {/* History button — sub-button below Animate */}
+      <div className="relative flex flex-col items-center w-full">
+        <button
+          onClick={onShowHistory}
+          onMouseEnter={() => setHoveredTarget('history')}
+          onMouseLeave={() => setHoveredTarget(null)}
+          title="Animation history"
+          className="flex items-center justify-center w-10 h-7 rounded border border-white/8 text-white/35 hover:border-[#ff006e]/40 hover:text-[#ff006e]/80 hover:bg-[#ff006e]/5 transition-all duration-150 font-pixel text-[8px]"
+        >
+          ≡
+        </button>
+        {hoveredTarget === 'history' && (
+          <div className="absolute left-full ml-3 top-0 z-[60] flex flex-col gap-0.5 pointer-events-none">
+            <span
+              className="font-pixel text-[7px] text-white/90 whitespace-nowrap px-2 py-1 rounded"
+              style={{
+                background: 'rgba(26,8,18,0.97)',
+                border: '1px solid rgba(255,0,110,0.2)',
+                boxShadow: '0 0 8px rgba(255,0,110,0.1)',
+              }}
+            >
+              Animation history
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Spacer */}
       <div className="flex-1" />

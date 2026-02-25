@@ -57,17 +57,24 @@ export async function getAnimationByToken(token: string): Promise<StoredAnimatio
   return (data as StoredAnimation | null) ?? null
 }
 
-export async function getAnimationsForDrawing(
-  drawing_id: string
-): Promise<Array<{ share_token: string; animation_prompt: string; created_at: string }>> {
+export async function getAnimationsForDrawing(drawing_id: string): Promise<StoredAnimation[]> {
   const { data } = await supabaseServer
     .from('animations')
-    .select('share_token, animation_prompt, created_at')
+    .select('*')
     .eq('drawing_id', drawing_id)
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false })
 
-  return (data as Array<{ share_token: string; animation_prompt: string; created_at: string }>) ?? []
+  return (data as StoredAnimation[]) ?? []
+}
+
+export async function deleteAnimation(id: string): Promise<boolean> {
+  const { error } = await supabaseServer
+    .from('animations')
+    .delete()
+    .eq('id', id)
+
+  return !error
 }
 
 export async function touchAnimation(token: string): Promise<void> {
