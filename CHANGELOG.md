@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## feat: cycling loading messages + linear progress bar in AnimateOverlay
+**Date:** 2026-02-25
+**Commit:** 247967d
+
+### What changed
+- Added `LOADING_MESSAGES` array (10 entries) above the component — wellness nudges, fun facts, hype lines
+- Added `loadingMessage` + `loadingBarPct` state
+- New `useEffect` keyed on `phase.name`: when phase enters `'loading'`, immediately picks a random message, then cycles every 4s; simultaneously ticks a progress bar increment (95/150 per 200ms) to reach 95% over ~30s, clamped there until phase changes
+- Removed the old CSS `@keyframes loadingBar` pulse animation entirely
+- Replaced static "GENERATING ANIMATION..." heading + "Claude is writing your animation · 10–20 seconds" subtitle with a single cycling message div (`text-[8px]`, `lineHeight: 2`, `maxWidth: 260` for wrapping)
+- Progress bar: now a `bg-white/5` track rail with a width-driven fill (`width: ${loadingBarPct}%`, `transition: width 0.2s linear`, pink glow `boxShadow: 0 0 8px #ff006e`)
+
+### Why
+Loading screen felt static and dead — gave no feedback about time or progress. Cycling messages add warmth and personality. The deterministic linear fill (95% over 30s, holds) is more honest than an infinite pulse that implies no forward movement.
+
+### Files affected
+- `src/components/canvas/AnimateOverlay.tsx`
+
 ## feat: JSONL session parser + structured /session viewer
 **Date:** 2026-02-24
 **Commit:** ef081d9
