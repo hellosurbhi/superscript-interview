@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## fix: rename page title from SuprScript to SurbhiDraw
+**Date:** 2026-02-25
+**Commit:** 990de12
+
+The `layout.tsx` title had been changed locally but never committed — Vercel was still serving "SuprScript — Draw. Paint. Create." in the browser tab. Committed the unstaged change and pushed along with the favicon commits so Vercel picks up all three updates.
+
+**Files affected:** `src/app/layout.tsx`
+
+---
+
 ## feat: add custom pencil favicon (amber on dark, matches app theme)
 **Date:** 2026-02-25
 **Commit:** 31048a3
