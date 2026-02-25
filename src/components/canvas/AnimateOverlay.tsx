@@ -31,6 +31,19 @@ const ANIM_DURATION = 7000
 const LOADER_COLORS = ['#f72585', '#ff006e', '#8338ec', '#06d6a0', '#ffd60a']
 const BLOCK_SIZE = 10
 
+const LOADING_MESSAGES = [
+  'this might take up to a minute...',
+  'good time to take a deep breath 🧘‍♀️',
+  'go grab a glass of water, you deserve it',
+  'get 100 steps in real quick!',
+  'stretch your wrists, they work hard for you',
+  'fun fact: you blink about 15–20 times per minute',
+  'the AI is studying your masterpiece...',
+  'converting your art into magic...',
+  'did you drink water today? go drink water',
+  "quick, think of something you're grateful for",
+]
+
 // ── Pixel loader canvas ────────────────────────────────────────────────────
 
 function PixelLoader() {
@@ -106,6 +119,8 @@ export default function AnimateOverlay({
     preloadedCode ? { name: 'playing', code: preloadedCode, isPaused: false } : { name: 'idle' }
   )
   const [promptText, setPromptText] = useState('')
+  const [loadingMessage, setLoadingMessage] = useState('')
+  const [loadingBarPct, setLoadingBarPct] = useState(0)
 
   // Playing phase refs
   const animCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -272,6 +287,32 @@ export default function AnimateOverlay({
     setPhase({ name: 'idle' })
   }, [])
 
+  // ── Loading message + progress bar ─────────────────────────────────────
+  useEffect(() => {
+    if (phase.name !== 'loading') {
+      setLoadingMessage('')
+      setLoadingBarPct(0)
+      return
+    }
+
+    const pick = () => LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]
+    setLoadingMessage(pick())
+    setLoadingBarPct(0)
+
+    const msgId = setInterval(() => setLoadingMessage(pick()), 4000)
+
+    // Fill to 95% over 30s (200ms × 150 ticks)
+    const INCREMENT = 95 / 150
+    const barId = setInterval(() => {
+      setLoadingBarPct((prev) => Math.min(95, prev + INCREMENT))
+    }, 200)
+
+    return () => {
+      clearInterval(msgId)
+      clearInterval(barId)
+    }
+  }, [phase.name])
+
   // ── Idle phase ─────────────────────────────────────────────────────────
   if (phase.name === 'idle') {
     return (
@@ -344,32 +385,26 @@ export default function AnimateOverlay({
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-[#1a0812]">
         <PixelLoader />
 
-        <div className="flex flex-col items-center gap-2">
-          <div
-            className="font-pixel text-[10px] text-[#ff006e] tracking-widest"
-            style={{ textShadow: '0 0 12px #ff006e' }}
-          >
-            GENERATING ANIMATION...
-          </div>
-          <div className="font-pixel text-[6px] text-white/25 tracking-wider">
-            Claude is writing your animation · 10–20 seconds
-          </div>
+        <div
+          className="font-pixel text-[8px] text-[#ff006e] tracking-widest text-center"
+          style={{ textShadow: '0 0 12px #ff006e', maxWidth: 260, lineHeight: 2 }}
+        >
+          {loadingMessage || 'GENERATING ANIMATION...'}
         </div>
 
-        {/* Fake progress pulse bar */}
-        <div className="fixed bottom-0 left-0 right-0 h-0.5 overflow-hidden">
+        {/* Linear fill progress bar */}
+        <div className="fixed bottom-0 left-0 right-0 h-[2px] bg-white/5">
           <div
             className="h-full bg-[#ff006e]"
-            style={{ animation: 'loadingBar 2s ease-in-out infinite' }}
+            style={{
+              width: `${loadingBarPct}%`,
+              transition: 'width 0.2s linear',
+              boxShadow: '0 0 8px #ff006e',
+            }}
           />
         </div>
 
         <style>{`
-          @keyframes loadingBar {
-            0%   { width: 0%;   margin-left: 0%; }
-            50%  { width: 60%;  margin-left: 20%; }
-            100% { width: 0%;   margin-left: 100%; }
-          }
           @keyframes slideUpFade {
             from { transform: translateY(100%); opacity: 0; }
             to   { transform: translateY(0);    opacity: 1; }
