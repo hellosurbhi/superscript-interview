@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## fix: clamp girlX to exact center when girl stops walking
+**Date:** 2026-02-25
+**Commit:** 7443689
+
+The previous center-stop logic (`if (girlX >= threshold) phaseRef.current = 5`) transitioned the phase correctly but never snapped `girlX` to the exact center value. Since the girl moves 3px per frame, she could overshoot by up to 2px, and in some edge cases the condition could be crossed without the girl being precisely centered.
+
+**Changes:**
+- `src/components/welcome/WelcomeCanvas.tsx` line 338: wrapped the one-liner condition into a block and added `girlX = Math.floor(W / 2 - GIRL_W / 2)` immediately before the phase transition — pins the sprite to the exact horizontal center before phase 5 begins
+
+**Result:** Girl walks in from the left and stops with pixel-perfect alignment at the canvas center, then stays there while subtitle and CTA appear.
+
 ## feat: girl stops at screen center instead of walking off-screen
 **Date:** 2026-02-25
 **Commit:** 640e491
