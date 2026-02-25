@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## style: taste-review fixes — text, glass, pinks, CRT, mobile canvas size
+**Date:** 2026-02-25
+**Commit:** 0049137
+
+Design audit scored the app: Premium Feel 3/5, Visual Clarity 3/5, Mobile UX 4/5, Craft 4/5. Applied all 6 identified fixes:
+
+1. **Welcome panel text sizes** — `Press Start 2P` was rendering below 10px on desktop (as low as 8px heading, 5px body). Changed to `clamp(12px,1.5vw,18px)` heading, `clamp(9px,0.9vw,11px)` body, `clamp(8px,0.7vw,9px)` hints/CTA.
+2. **Glass panel strength** — backdrop blur raised 8px→16px, box-shadow alpha 0.08→0.20, border alpha 0.15→0.25, animation box border 0.10→0.22. Panels now visibly frost against the pink background.
+3. **Unified accent pink** — welcome screen was using `#e91e8c` (more magenta) while toolbar/canvas used `#ff006e` (brand token). Replaced all canvas drawing calls, GIRL_PAL, logo shadow/fill, and CTA text color to `#ff006e`.
+4. **CRT scanline opacity** — halved from 0.06 to 0.03. Retains the retro feel without adding a perceptual haze over all content.
+5. **Mobile animation box** — changed from `width:60%, height:60%` to `min(90vw,560px) × min(72vh,480px)`. On a 390px phone the canvas now fills ~90% width instead of 234px.
+6. **Removed duplicate CSS class** — `.neon-text-blue` was identical to `.neon-text-pink` and misleadingly named. Removed. No usages found in the codebase.
+
+**Files:** `src/components/welcome/WelcomeCanvas.tsx`, `src/app/globals.css`
+
 ## fix: clamp girlX to exact center when girl stops walking
 **Date:** 2026-02-25
 **Commit:** 7443689
