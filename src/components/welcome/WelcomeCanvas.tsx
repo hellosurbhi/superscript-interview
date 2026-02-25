@@ -335,7 +335,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
             trailColorIdx++
           }
 
-          if (girlX > W + GIRL_W) phaseRef.current = 5
+          if (girlX >= Math.floor(W / 2 - GIRL_W / 2)) phaseRef.current = 5
         }
 
         // Draw trail (fade each dot out)
@@ -349,8 +349,8 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
           ctx.globalAlpha = 1
         }
 
-        // Draw girl (only while she's actively walking)
-        if (phaseRef.current === 4) {
+        // Draw girl (while walking and after stopping at center)
+        if (phaseRef.current >= 4) {
           drawGirl(girlX, girlY, walkFrame)
         }
       }
