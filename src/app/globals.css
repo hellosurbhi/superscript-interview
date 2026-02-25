@@ -47,8 +47,8 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 0, 0, 0.06) 2px,
-    rgba(0, 0, 0, 0.06) 4px
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
   );
   animation: scanline-scroll 10s linear infinite;
 }
@@ -90,9 +90,9 @@ body {
   0%, 49% {
     opacity: 1;
     text-shadow:
-      0 0 8px #e91e8c,
-      0 0 20px rgba(233, 30, 140, 0.4),
-      0 0 40px rgba(233, 30, 140, 0.2);
+      0 0 8px #ff006e,
+      0 0 20px rgba(255, 0, 110, 0.4),
+      0 0 40px rgba(255, 0, 110, 0.2);
   }
   50%, 100% {
     opacity: 0.15;
@@ -205,13 +205,6 @@ canvas {
 }
 
 /* ─── Neon glow text ─────────────────────────────────────── */
-.neon-text-blue {
-  color: #ff006e;
-  text-shadow:
-    0 0 6px #ff006e,
-    0 0 14px #ff006e;
-}
-
 .neon-text-pink {
   color: #ff006e;
   text-shadow:

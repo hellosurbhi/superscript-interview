@@ -19,7 +19,7 @@ const GIRL_PAL: Record<string, string> = {
   h: '#6b21a8',  // purple hair highlight
   S: '#8B5E3C',  // brown skin
   s: '#c49060',  // lighter skin
-  P: '#e91e8c',  // hot pink outfit
+  P: '#ff006e',  // hot pink outfit
   p: '#ff80ab',  // light pink
   W: '#ffffff',  // white (eyes)
   e: '#2d0055',  // eye pupils
@@ -221,7 +221,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
         const alpha = Math.min(1, t / 10)
         const cx = Math.floor(W / 2 / BLOCK_SIZE)
         const cy = Math.floor(H / 2 / BLOCK_SIZE)
-        drawPixelBlock(cx, cy, '#e91e8c', alpha)
+        drawPixelBlock(cx, cy, '#ff006e', alpha)
         if (t >= 15) {
           phaseRef.current = 1
           spawnParticles(W / 2, H / 2)
@@ -242,7 +242,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
 
       // Phase 2: Logo typing
       if (phaseRef.current >= 2) {
-        ctx.strokeStyle = 'rgba(233,30,140,0.04)'
+        ctx.strokeStyle = 'rgba(255,0,110,0.04)'
         ctx.lineWidth = 1
         for (let lx = 0; lx < W; lx += BLOCK_SIZE * 4) {
           ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, H); ctx.stroke()
@@ -263,8 +263,8 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
 
         for (const [blur, alpha] of [[30, 0.2], [15, 0.45], [6, 0.75], [0, 1]] as const) {
           ctx.shadowBlur = blur
-          ctx.shadowColor = '#e91e8c'
-          ctx.fillStyle = `rgba(233,30,140,${alpha})`
+          ctx.shadowColor = '#ff006e'
+          ctx.fillStyle = `rgba(255,0,110,${alpha})`
           ctx.fillText(displayText, W / 2, H * 0.28)
         }
         ctx.shadowBlur = 0
@@ -275,7 +275,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
           const logoFontSize = Math.max(12, Math.floor(W / 22))
           const charWidth = logoFontSize * 0.6
           const textWidth = logoCharsShown * charWidth
-          ctx.fillStyle = '#e91e8c'
+          ctx.fillStyle = '#ff006e'
           ctx.fillRect(W / 2 - textWidth / 2 + textWidth, H * 0.28 - logoFontSize * 0.6, 3, logoFontSize * 1.2)
         }
       }
@@ -423,7 +423,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
       <div
         ref={animBoxRef}
         className="relative"
-        style={{ width: '60%', height: '60%' }}
+        style={{ width: 'min(90vw, 560px)', height: 'min(72vh, 480px)' }}
       >
         <canvas
           ref={canvasRef}
@@ -434,7 +434,7 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
         {/* Subtle border on animation box */}
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ border: '1px solid rgba(233,30,140,0.10)' }}
+          style={{ border: '1px solid rgba(255,0,110,0.22)' }}
         />
       </div>
 
@@ -444,40 +444,40 @@ export default function WelcomeCanvas({ onEnter, dismissing }: WelcomeCanvasProp
           className="absolute bottom-8 right-8 text-right z-10 pointer-events-none panel-slide-up max-w-xs"
           style={{
             background: 'rgba(255,240,247,0.88)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            border: '1px solid rgba(233,30,140,0.15)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,0,110,0.25)',
             borderRadius: '4px',
             padding: '12px 16px',
-            boxShadow: '0 0 24px rgba(233,30,140,0.08)',
+            boxShadow: '0 0 32px rgba(255,0,110,0.20)',
           }}
         >
           <h1
             className="font-pixel leading-relaxed mb-3 text-[#3d1025]"
-            style={{ fontSize: 'clamp(8px, 1.2vw, 13px)' }}
+            style={{ fontSize: 'clamp(12px, 1.5vw, 18px)' }}
           >
             Welcome to SurbhiDraw!
           </h1>
           <p
             className="font-pixel leading-relaxed mb-4 text-[#7a3550]"
-            style={{ fontSize: 'clamp(5px, 0.7vw, 8px)', opacity: 0.7 }}
+            style={{ fontSize: 'clamp(9px, 0.9vw, 11px)', opacity: 0.7 }}
           >
             Draw wireframes, art prototypes, pretty much anything
             your heart desires — and we'll animate it for you
           </p>
           <p
             className="font-pixel leading-relaxed mb-2 text-[#7a3550]"
-            style={{ fontSize: 'clamp(4px, 0.55vw, 7px)', opacity: 0.4 }}
+            style={{ fontSize: 'clamp(8px, 0.7vw, 9px)', opacity: 0.4 }}
           >
             tip: your drawing is saved for this session,<br />but not between sessions (yet)
           </p>
           <p
             className="font-pixel leading-relaxed mb-3 text-[#7a3550]"
-            style={{ fontSize: 'clamp(4px, 0.55vw, 7px)', opacity: 0.4 }}
+            style={{ fontSize: 'clamp(8px, 0.7vw, 9px)', opacity: 0.4 }}
           >
             Press ? for keyboard shortcuts
           </p>
-          <p className="font-pixel text-[#e91e8c] neon-blink tracking-widest" style={{ fontSize: 'clamp(6px, 0.8vw, 9px)' }}>
+          <p className="font-pixel text-[#ff006e] neon-blink tracking-widest" style={{ fontSize: 'clamp(9px, 0.9vw, 11px)' }}>
             ▶ CLICK ANYWHERE TO BEGIN
           </p>
         </div>
