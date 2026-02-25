@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDrawing, updateDrawing } from '@/lib/drawings'
+import { getAnimationsForDrawing } from '@/lib/animations'
 import type { CompletedStroke } from '@/types/drawing'
 
 type Params = { params: Promise<{ token: string }> }
 
-// GET /api/drawings/[token] — fetch drawing by share_token
+// GET /api/drawings/[token] — fetch drawing by share_token, includes animation list
 export async function GET(_req: NextRequest, { params }: Params) {
   const { token } = await params
   const drawing = await getDrawing(token)
   if (!drawing) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
-  return NextResponse.json(drawing)
+
+  const animations = await getAnimationsForDrawing(drawing.id)
+  return NextResponse.json({ ...drawing, animations })
 }
 
 // PUT /api/drawings/[token] — update drawing by UUID id (token param is the UUID here)

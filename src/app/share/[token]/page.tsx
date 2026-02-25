@@ -17,6 +17,7 @@ interface SharedData {
   strokes: CompletedStroke[]
   animation_code: string | null
   animation_prompt: string | null
+  animations: Array<{ share_token: string; animation_prompt: string; created_at: string }>
 }
 
 export default function SharedDrawPage() {
@@ -73,6 +74,24 @@ export default function SharedDrawPage() {
         initialAnimationPrompt={shared!.animation_prompt ?? undefined}
         shareToken={token}
       />
+
+      {/* Animations list — top-right corner */}
+      {shared!.animations.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 flex flex-col gap-1 items-end pointer-events-auto">
+          <span className="font-pixel text-[6px] text-white/25 tracking-widest">ANIMATIONS</span>
+          {shared!.animations.map((a) => (
+            <a
+              key={a.share_token}
+              href={`/share/animation/${a.share_token}`}
+              className="font-pixel text-[7px] text-[#ff006e]/60 hover:text-[#ff006e] tracking-wider transition-colors"
+            >
+              ▶ {a.animation_prompt.length > 28
+                ? a.animation_prompt.slice(0, 28) + '…'
+                : a.animation_prompt}
+            </a>
+          ))}
+        </div>
+      )}
     </main>
   )
 }

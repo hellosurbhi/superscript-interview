@@ -23,8 +23,9 @@ interface AnimateOverlayProps {
   canvasHeight: number
   strokes: CompletedStroke[]
   onBack: () => void
-  onShare?: (animationCode: string, animationPrompt: string) => void
+  onShareAnimation?: (animationCode: string, animationPrompt: string) => Promise<{ url: string }>
   preloadedCode?: string
+  viewerMode?: boolean
 }
 
 const ANIM_DURATION = 7000
@@ -112,8 +113,9 @@ export default function AnimateOverlay({
   canvasHeight,
   strokes,
   onBack,
-  onShare,
+  onShareAnimation,
   preloadedCode,
+  viewerMode = false,
 }: AnimateOverlayProps) {
   const [phase, setPhase] = useState<Phase>(
     preloadedCode ? { name: 'playing', code: preloadedCode, isPaused: false } : { name: 'idle' }
@@ -121,6 +123,8 @@ export default function AnimateOverlay({
   const [promptText, setPromptText] = useState('')
   const [loadingMessage, setLoadingMessage] = useState('')
   const [loadingBarPct, setLoadingBarPct] = useState(0)
+  const [animShareState, setAnimShareState] = useState<'idle' | 'saving' | 'done'>('idle')
+  const [animShareUrl, setAnimShareUrl] = useState<string | null>(null)
 
   // Playing phase refs
   const animCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -286,6 +290,18 @@ export default function AnimateOverlay({
   const handleRetry = useCallback(() => {
     setPhase({ name: 'idle' })
   }, [])
+
+  const handleShareClick = useCallback(async () => {
+    if (phase.name !== 'playing' || !onShareAnimation || animShareState === 'saving') return
+    setAnimShareState('saving')
+    try {
+      const { url } = await onShareAnimation(phase.code, promptText)
+      setAnimShareUrl(url)
+      setAnimShareState('done')
+    } catch {
+      setAnimShareState('idle')
+    }
+  }, [phase, promptText, onShareAnimation, animShareState])
 
   // ── Loading message + progress bar ─────────────────────────────────────
   useEffect(() => {
@@ -469,8 +485,12 @@ export default function AnimateOverlay({
           boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
         }}
       >
-        {/* Back */}
-        <ControlButton onClick={onBack} label="BACK" icon="←" />
+        {/* Back / View Drawing */}
+        <ControlButton
+          onClick={onBack}
+          label={viewerMode ? 'DRAWING' : 'BACK'}
+          icon={viewerMode ? '↗' : '←'}
+        />
 
         <div className="w-px h-5 bg-white/10 mx-1" />
 
@@ -485,22 +505,30 @@ export default function AnimateOverlay({
           active={!phase.isPaused}
         />
 
-        <div className="w-px h-5 bg-white/10 mx-1" />
-
-        {/* Regenerate */}
-        <ControlButton onClick={handleRegenerate} label="REDO" icon="⚡" />
-
-        {onShare && (
+        {!viewerMode && (
           <>
             <div className="w-px h-5 bg-white/10 mx-1" />
-            <ControlButton
-              onClick={() => onShare(phase.code, promptText)}
-              label="SHARE"
-              icon="↗"
-            />
+            {/* Regenerate */}
+            <ControlButton onClick={handleRegenerate} label="REDO" icon="⚡" />
+
+            {onShareAnimation && (
+              <ControlButton
+                onClick={handleShareClick}
+                label={animShareState === 'saving' ? '...' : 'SHARE'}
+                icon="↗"
+              />
+            )}
           </>
         )}
       </div>
+
+      {/* Animation share mini-overlay */}
+      {animShareUrl && (
+        <AnimShareOverlay
+          url={animShareUrl}
+          onDismiss={() => { setAnimShareUrl(null); setAnimShareState('idle') }}
+        />
+      )}
 
       {/* Progress bar */}
       <div className="fixed bottom-0 left-0 right-0 h-0.5 bg-white/5">
@@ -538,5 +566,73 @@ function ControlButton({
       <span className="text-sm leading-none">{icon}</span>
       <span className="font-pixel text-[5px] leading-none tracking-wider">{label}</span>
     </button>
+  )
+}
+
+// ── Animation share mini-overlay ────────────────────────────────────────────
+
+function AnimShareOverlay({ url, onDismiss }: { url: string; onDismiss: () => void }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // ignore
+    }
+  }, [url])
+
+  return (
+    <div
+      className="fixed top-20 left-1/2 -translate-x-1/2 z-20 flex flex-col gap-3 px-4 py-4 rounded"
+      style={{
+        background: 'rgba(26,8,18,0.97)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,0,110,0.25)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+        width: 'min(320px, calc(100vw - 32px))',
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="font-pixel text-[8px] text-[#ff006e] tracking-widest"
+          style={{ textShadow: '0 0 8px #ff006e88' }}>
+          SHARE ANIMATION
+        </span>
+        <button
+          onClick={onDismiss}
+          className="text-white/30 hover:text-white/70 transition-colors text-base leading-none"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          readOnly
+          value={url}
+          onFocus={(e) => e.currentTarget.select()}
+          className="flex-1 text-xs px-3 py-2 rounded border border-white/10 bg-white/5 text-white/60 font-mono focus:outline-none"
+          style={{ minWidth: 0 }}
+        />
+        <button
+          onClick={handleCopy}
+          className="shrink-0 px-3 py-2 rounded font-pixel text-[7px] tracking-widest transition-all duration-150"
+          style={
+            copied
+              ? { background: '#06d6a0', color: '#fff', border: '1px solid #06d6a0' }
+              : { background: '#ff006e22', color: '#ff006e', border: '1px solid #ff006e44' }
+          }
+        >
+          {copied ? 'COPIED!' : 'COPY'}
+        </button>
+      </div>
+
+      <p className="font-pixel text-[6px] text-white/25 leading-relaxed">
+        This link expires in 24 hours · view-only playback
+      </p>
+    </div>
   )
 }

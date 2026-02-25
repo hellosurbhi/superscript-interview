@@ -5,6 +5,7 @@ const TTL_MS = 86_400_000 // 24 hours
 
 export interface StoredDrawing {
   id: string
+  share_token: string
   strokes: CompletedStroke[]
   animation_code: string | null
   animation_prompt: string | null
@@ -16,7 +17,7 @@ export interface StoredDrawing {
 export async function getDrawing(shareToken: string): Promise<StoredDrawing | null> {
   const { data, error } = await supabaseServer
     .from('drawings')
-    .select('id, strokes, animation_code, animation_prompt, created_at, updated_at, expires_at')
+    .select('id, share_token, strokes, animation_code, animation_prompt, created_at, updated_at, expires_at')
     .eq('share_token', shareToken)
     .gt('expires_at', new Date().toISOString())
     .single()
@@ -41,6 +42,16 @@ export async function createDrawing(
   })
   if (error) throw new Error(error.message)
   return expiresAt
+}
+
+export async function getDrawingById(id: string): Promise<StoredDrawing | null> {
+  const { data } = await supabaseServer
+    .from('drawings')
+    .select('id, share_token, strokes, animation_code, animation_prompt, created_at, updated_at, expires_at')
+    .eq('id', id)
+    .single()
+
+  return (data as StoredDrawing | null) ?? null
 }
 
 export async function updateDrawing(

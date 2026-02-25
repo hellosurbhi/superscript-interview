@@ -5,9 +5,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 interface ShareModalProps {
   shareUrl: string
   onClose: () => void
+  title?: string
 }
 
-export default function ShareModal({ shareUrl, onClose }: ShareModalProps) {
+export default function ShareModal({ shareUrl, onClose, title = 'SHARE DRAWING' }: ShareModalProps) {
   const [copied, setCopied] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
 
@@ -58,7 +59,7 @@ export default function ShareModal({ shareUrl, onClose }: ShareModalProps) {
             className="font-pixel text-[9px] tracking-widest"
             style={{ color: '#1a1a2e' }}
           >
-            SHARE DRAWING
+            {title}
           </span>
           <button
             onClick={onClose}

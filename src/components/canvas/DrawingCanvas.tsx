@@ -504,61 +504,67 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
     setSelectedStrokeId(null)
   }, [drawing])
 
-  const handleShare = useCallback(async (animationCode?: string, animationPrompt?: string) => {
-    if (shareState === 'saving') return
-
-    // If already shared, just open the modal with existing URL
-    if (shareUrlRef.current && drawingIdRef.current) {
-      // If new animation data came in, save it via PUT
-      if (animationCode) {
-        await fetch(`/api/drawings/${drawingIdRef.current}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ strokes: drawing.getStrokes(), animation_code: animationCode, animation_prompt: animationPrompt ?? null }),
-        }).catch((err: unknown) => console.error('[handleShare] animation PUT failed:', err))
-      }
-      setShareModal({ url: shareUrlRef.current })
-      return
-    }
+  const ensureDrawingSaved = useCallback(async (): Promise<string> => {
+    if (drawingIdRef.current) return drawingIdRef.current
 
     setShareState('saving')
+    let canvasImage: string | null = null
     try {
-      let canvasImage: string | null = null
-      try {
-        canvasImage = drawingCanvasRef.current?.toDataURL('image/png') ?? null
-      } catch (imgErr) {
-        console.error('[handleShare] toDataURL failed:', imgErr)
-      }
-      const res = await fetch('/api/drawings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          strokes: drawing.getStrokes(),
-          canvas_image: canvasImage,
-          animation_code: animationCode ?? null,
-          animation_prompt: animationPrompt ?? null,
-        }),
-      })
-      if (!res.ok) throw new Error('create_failed')
-      const { id, share_token, share_url, expiresAt: exp } = await res.json() as {
-        id: string
-        share_token: string
-        share_url: string
-        expiresAt: string
-      }
-      drawingIdRef.current = id
-      shareTokenRef.current = share_token
-      shareUrlRef.current = share_url
-      setExpiresAt(new Date(exp).getTime())
-      window.history.replaceState(null, '', `/share/${share_token}`)
-      setShareState('idle')
-      setShareModal({ url: share_url })
+      canvasImage = drawingCanvasRef.current?.toDataURL('image/png') ?? null
+    } catch (imgErr) {
+      console.error('[ensureDrawingSaved] toDataURL failed:', imgErr)
+    }
+    const res = await fetch('/api/drawings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strokes: drawing.getStrokes(), canvas_image: canvasImage }),
+    })
+    if (!res.ok) throw new Error('create_failed')
+    const { id, share_token, share_url, expiresAt: exp } = await res.json() as {
+      id: string; share_token: string; share_url: string; expiresAt: string
+    }
+    drawingIdRef.current = id
+    shareTokenRef.current = share_token
+    shareUrlRef.current = share_url
+    setExpiresAt(new Date(exp).getTime())
+    window.history.replaceState(null, '', `/share/${share_token}`)
+    setShareState('idle')
+    return id
+  }, [drawing])
+
+  const handleShare = useCallback(async () => {
+    if (shareState === 'saving') return
+    try {
+      await ensureDrawingSaved()
+      setShareModal({ url: shareUrlRef.current! })
     } catch (err) {
       console.error('[handleShare]', err)
       setShareState('error')
       setTimeout(() => setShareState('idle'), 2000)
     }
-  }, [drawing, shareState])
+  }, [ensureDrawingSaved, shareState])
+
+  const handleShareAnimation = useCallback(async (
+    animationCode: string,
+    animationPrompt: string
+  ): Promise<{ url: string }> => {
+    const drawingId = await ensureDrawingSaved()
+    const res = await fetch('/api/animations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        drawing_id: drawingId,
+        animation_code: animationCode,
+        animation_prompt: animationPrompt,
+        preview_image: animateSnapshot?.dataUrl ?? null,
+        canvas_width: animateSnapshot?.width ?? null,
+        canvas_height: animateSnapshot?.height ?? null,
+      }),
+    })
+    if (!res.ok) throw new Error('Failed to create animation share')
+    const { share_url } = await res.json() as { share_url: string }
+    return { url: share_url }
+  }, [ensureDrawingSaved, animateSnapshot])
 
   const canvasStyle = {
     transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
@@ -597,7 +603,7 @@ export default function DrawingCanvas({ drawingId, initialStrokes, initialAnimat
           canvasHeight={animateSnapshot.height}
           strokes={drawing.getStrokes()}
           onBack={() => setActiveTool('pencil')}
-          onShare={(code, prompt) => handleShare(code, prompt)}
+          onShareAnimation={handleShareAnimation}
           preloadedCode={initialAnimationCode}
         />
       )}
