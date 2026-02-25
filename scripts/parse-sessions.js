@@ -59,6 +59,17 @@ function extractUserMessage(event) {
     .trim()
 }
 
+function isSystemInjectedMessage(text) {
+  if (!text || !text.trim()) return true
+  if (/^#\s+\w/.test(text.trim())) return true                          // skill/command markdown expansions
+  if (text.startsWith('This session is being continued')) return true    // context compaction summaries
+  if (/^\[Request interrupted/.test(text.trim())) return true            // interrupt signals
+  if (/^\[Image:\s/.test(text.trim())) return true                       // image path descriptions
+  if (/^❯\s/.test(text.trim())) return true                              // compact echo messages
+  if (text.startsWith('Implement the following plan:')) return true      // GSD plan submissions
+  return false
+}
+
 function summarizeInput(name, input) {
   if (!input) return ''
   switch (name) {
@@ -181,21 +192,23 @@ for (const [sessionId, events] of sessionMap) {
     // Track unknown types (skip expected non-content types)
     const knownTypes = new Set([
       'user', 'assistant', 'direct', 'progress', 'system',
-      'file-history-snapshot', 'update', 'message', 'text', 'thinking', 'tool_use', 'tool_result'
+      'file-history-snapshot', 'update', 'message', 'text', 'thinking', 'tool_use', 'tool_result',
+      'queue-operation'
     ])
     if (!knownTypes.has(type)) unknownTypes.add(type)
 
     // Skip noise
-    if (['progress', 'system', 'file-history-snapshot', 'update'].includes(type)) continue
+    if (['progress', 'system', 'file-history-snapshot', 'update', 'queue-operation'].includes(type)) continue
 
     if (type === 'user' && event.message?.content !== undefined) {
       const rawContent = event.message.content
       // Skip tool_result messages (Claude API sends these back as "user" role)
-      if (Array.isArray(rawContent) && rawContent.every((b) => b.type === 'tool_result')) continue
+      if (Array.isArray(rawContent) && rawContent.some((b) => b.type === 'tool_result')) continue
       if (Array.isArray(rawContent) && !rawContent.some((b) => b.type === 'text')) continue
-      // Extract and skip empty messages after stripping system injections
+      // Extract and skip empty/system-injected messages
       const msg = extractUserMessage(event)
       if (!msg.trim()) continue
+      if (isSystemInjectedMessage(msg)) continue
       // Push completed turn
       if (currentTurn) turns.push(currentTurn)
       currentTurn = makeTurn(event, turnIndex++)

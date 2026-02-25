@@ -36,6 +36,13 @@ function highlight(text: string, q: string): React.ReactNode {
   )
 }
 
+function truncateHeader(text: string): string {
+  const firstLine = text.split('\n')[0]
+  const isMultiline = text.includes('\n')
+  if (firstLine.length <= 120 && !isMultiline) return firstLine
+  return firstLine.slice(0, 120) + '…'
+}
+
 function TextBody({ text, query }: { text: string; query: string }) {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
@@ -201,8 +208,8 @@ export default function SessionPage() {
                     <button onClick={() => toggle(key)} style={{ width: '100%', textAlign: 'left', background: isOpen ? 'rgba(233,30,140,0.04)' : 'transparent', border: 'none', cursor: 'pointer', padding: '9px 12px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <span className="font-pixel" style={{ fontSize: 7, color: '#ff006e', flexShrink: 0, marginTop: 2 }}>❯</span>
                       <span className="font-pixel" style={{ fontSize: 6, color: 'rgba(233,30,99,0.3)', flexShrink: 0, marginTop: 3, whiteSpace: 'nowrap' }}>{String(turn.index).padStart(2, '0')}</span>
-                      <span style={{ fontFamily: 'var(--font-geist-mono, monospace)', fontSize: 12, color: '#ededed', lineHeight: 1.6, flex: 1, wordBreak: 'break-word' }}>
-                        {searchQuery ? highlight(turn.userMessage, searchQuery) : turn.userMessage}
+                      <span style={{ fontFamily: 'var(--font-geist-mono, monospace)', fontSize: 12, color: '#ededed', lineHeight: 1.6, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                        {searchQuery ? highlight(truncateHeader(turn.userMessage), searchQuery) : truncateHeader(turn.userMessage)}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 2 }}>
                         {turn.toolCalls.length > 0 && (
@@ -215,39 +222,54 @@ export default function SessionPage() {
                     </button>
 
                     {/* Turn body */}
-                    {isOpen && hasContent && (
+                    {isOpen && (hasContent || !!turn.userMessage) && (
                       <div style={{ borderTop: '1px solid rgba(233,30,140,0.1)', padding: '12px 14px 14px', background: 'rgba(233,30,140,0.02)' }}>
-                        {/* File pills */}
-                        {hasFiles && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
-                            {turn.filesWritten.map((f, i) => <Pill key={`w${i}`} label={`+ ${f}`} color="#4ade80" bg="rgba(74,222,128,0.08)" border="rgba(74,222,128,0.25)" />)}
-                            {turn.filesModified.map((f, i) => <Pill key={`m${i}`} label={`✏ ${f}`} color="#fbbf24" bg="rgba(251,191,36,0.08)" border="rgba(251,191,36,0.25)" />)}
-                            {turn.filesRead.slice(0, 5).map((f, i) => <Pill key={`r${i}`} label={`📖 ${f}`} color="#9ca3af" bg="rgba(156,163,175,0.08)" border="rgba(156,163,175,0.2)" />)}
-                            {turn.filesRead.length > 5 && <Pill label={`+${turn.filesRead.length - 5} more`} color="#9ca3af" bg="rgba(156,163,175,0.06)" border="rgba(156,163,175,0.15)" />}
+                        {/* Full user prompt — pink left border */}
+                        {turn.userMessage && (
+                          <div style={{ borderLeft: '3px solid rgba(255,0,110,0.45)', background: 'rgba(255,0,110,0.03)', padding: '8px 12px', marginBottom: 14, borderRadius: '0 3px 3px 0' }}>
+                            <div className="font-pixel" style={{ fontSize: 5, color: 'rgba(255,0,110,0.5)', letterSpacing: '0.1em', marginBottom: 6 }}>YOU</div>
+                            <div style={{ fontFamily: 'var(--font-geist-mono, monospace)', fontSize: 11, color: '#e0c8d0', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                              {searchQuery ? highlight(turn.userMessage, searchQuery) : turn.userMessage}
+                            </div>
                           </div>
                         )}
 
-                        {/* Bash commands */}
-                        {turn.bashCommands.map((cmd, i) => (
-                          <pre key={i} style={{ background: '#111', borderLeft: '2px solid rgba(233,30,140,0.2)', borderRadius: 3, padding: '6px 10px', fontSize: 11, fontFamily: 'monospace', color: '#c9b8c4', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: '0 0 8px' }}>
-                            $ {cmd}
-                          </pre>
-                        ))}
+                        {/* Claude's response — muted gray left border */}
+                        {hasContent && (
+                          <div style={{ borderLeft: '2px solid rgba(255,255,255,0.08)', paddingLeft: 12 }}>
+                            {/* File pills */}
+                            {hasFiles && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
+                                {turn.filesWritten.map((f, i) => <Pill key={`w${i}`} label={`+ ${f}`} color="#4ade80" bg="rgba(74,222,128,0.08)" border="rgba(74,222,128,0.25)" />)}
+                                {turn.filesModified.map((f, i) => <Pill key={`m${i}`} label={`✏ ${f}`} color="#fbbf24" bg="rgba(251,191,36,0.08)" border="rgba(251,191,36,0.25)" />)}
+                                {turn.filesRead.slice(0, 5).map((f, i) => <Pill key={`r${i}`} label={`📖 ${f}`} color="#9ca3af" bg="rgba(156,163,175,0.08)" border="rgba(156,163,175,0.2)" />)}
+                                {turn.filesRead.length > 5 && <Pill label={`+${turn.filesRead.length - 5} more`} color="#9ca3af" bg="rgba(156,163,175,0.06)" border="rgba(156,163,175,0.15)" />}
+                              </div>
+                            )}
 
-                        {/* Diffs */}
-                        {turn.diffs.map((diff, i) => (
-                          <div key={i} style={{ marginBottom: 10 }}>
-                            <div className="font-pixel" style={{ fontSize: 6, color: 'rgba(233,30,140,0.4)', marginBottom: 4 }}>{diff.file}</div>
-                            <pre style={{ background: '#111', borderLeft: '2px solid rgba(233,30,140,0.2)', borderRadius: 3, padding: '6px 10px', fontSize: 11, fontFamily: 'monospace', overflowX: 'auto', whiteSpace: 'pre', margin: 0 }}>
-                              {diff.removed.map((l, j) => <div key={`r${j}`} style={{ color: '#f87171' }}>- {l}</div>)}
-                              {diff.added.map((l, j) => <div key={`a${j}`} style={{ color: '#4ade80' }}>+ {l}</div>)}
-                            </pre>
+                            {/* Bash commands */}
+                            {turn.bashCommands.map((cmd, i) => (
+                              <pre key={i} style={{ background: '#111', borderLeft: '2px solid rgba(233,30,140,0.2)', borderRadius: 3, padding: '6px 10px', fontSize: 11, fontFamily: 'monospace', color: '#c9b8c4', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: '0 0 8px' }}>
+                                $ {cmd}
+                              </pre>
+                            ))}
+
+                            {/* Diffs */}
+                            {turn.diffs.map((diff, i) => (
+                              <div key={i} style={{ marginBottom: 10 }}>
+                                <div className="font-pixel" style={{ fontSize: 6, color: 'rgba(233,30,140,0.4)', marginBottom: 4 }}>{diff.file}</div>
+                                <pre style={{ background: '#111', borderLeft: '2px solid rgba(233,30,140,0.2)', borderRadius: 3, padding: '6px 10px', fontSize: 11, fontFamily: 'monospace', overflowX: 'auto', whiteSpace: 'pre', margin: 0 }}>
+                                  {diff.removed.map((l, j) => <div key={`r${j}`} style={{ color: '#f87171' }}>- {l}</div>)}
+                                  {diff.added.map((l, j) => <div key={`a${j}`} style={{ color: '#4ade80' }}>+ {l}</div>)}
+                                </pre>
+                              </div>
+                            ))}
+
+                            {/* Assistant text */}
+                            {turn.assistantText.trim() && (
+                              <TextBody text={turn.assistantText} query={searchQuery} />
+                            )}
                           </div>
-                        ))}
-
-                        {/* Assistant text */}
-                        {turn.assistantText.trim() && (
-                          <TextBody text={turn.assistantText} query={searchQuery} />
                         )}
                       </div>
                     )}
