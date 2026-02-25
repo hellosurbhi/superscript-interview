@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## fix: Escape key now closes AnimateOverlay from textarea
+**Date:** 2026-02-25
+**Commit:** f042bbd
+
+### What changed
+**src/components/canvas/AnimateOverlay.tsx:**
+- Added `if (e.key === 'Escape') { e.preventDefault(); onBack() }` to the textarea's `onKeyDown` handler
+
+### Why
+The AnimateOverlay textarea has `autoFocus`, so it immediately captures keyboard focus when the panel opens. The global Escape handler in `DrawingCanvas.tsx` guards against `HTMLTextAreaElement` targets and returns early — meaning Escape was silently swallowed and the overlay could never be dismissed via keyboard. The BACK button still worked because it's a click. Now Escape triggers `onBack()` directly from the textarea handler, restoring expected dismiss-on-Escape behavior consistent with every other panel in the app.
+
+### Bugs logged
+Created `BUGS.md` to track 3 findings from the 2026-02-25 QA session:
+- BUG-001 (Medium): Escape not closing AnimateOverlay — **now fixed**
+- BUG-002 (Low): Welcome animation text truncated on mobile canvas edge
+- BUG-003 (Low): Tooltip overlays may block button clicks — needs manual verification
+
+---
+
 ## fix: session parser filters system-injected messages + split prompt/response display
 **Date:** 2026-02-25
 **Commit:** 5472ebd
