@@ -1,5 +1,76 @@
 # CHANGELOG
 
+## feat: separate shareable links for drawings and animations
+**Date:** 2026-02-25
+**Commit:** 0f6db51
+
+### What changed
+
+**New: `animations` table** — run the SQL migration below in Supabase. Stores animation records independently of the drawings table, each with its own `share_token`, `preview_image` (canvas PNG at animate time), `canvas_width/height`, and rolling 24-hr expiry.
+
+**New: `src/lib/animations.ts`** — DB helpers: `createAnimation`, `getAnimationByToken`, `getAnimationsForDrawing`, `touchAnimation` (reset expiry on view).
+
+**`src/lib/drawings.ts`** — added `share_token` to `StoredDrawing` interface and `getDrawingById(id)` helper (no expiry check — used by animation API to fetch drawing even if expired).
+
+**New: `POST /api/animations`** — creates animation record linked to `drawing_id`. Returns `{ share_url: /share/animation/[token], expiresAt }`.
+
+**New: `GET /api/animations/[token]`** — fetches animation, touches expiry on view, fetches drawing (for strokes + back-link). Drawing being expired does not break the animation (strokes fall back to `[]`).
+
+**`GET /api/drawings/[token]`** — now includes `animations: []` list in response (share_token, animation_prompt, created_at for each live animation on this drawing).
+
+**`AnimateOverlay.tsx`**:
+- `onShare` prop replaced with `onShareAnimation?: (code, prompt) => Promise<{ url }>` — async, returns the animation share URL
+- New `viewerMode?: boolean` prop — hides REDO and SHARE buttons, relabels BACK → "DRAWING ↗"
+- New `AnimShareOverlay` inline component — dark mini-modal with copy button that appears after sharing animation
+- New `animShareState` / `animShareUrl` state for managing the share flow inside the overlay
+
+**`DrawingCanvas.tsx`**:
+- Extracted `ensureDrawingSaved()` — idempotent, creates drawing if needed, sets refs, updates URL
+- `handleShare()` (toolbar) — now only calls `ensureDrawingSaved()` + shows modal; no animation_code saved to drawing anymore
+- New `handleShareAnimation(code, prompt)` — ensures drawing saved, then POSTs to `/api/animations` with `preview_image` and canvas dimensions from `animateSnapshot`
+
+**`ShareModal.tsx`** — added optional `title` prop (default: `'SHARE DRAWING'`).
+
+**New: `/share/animation/[token]/page.tsx`** — view-only animation playback page. Fetches `/api/animations/[token]`, renders `AnimateOverlay` with `viewerMode=true` and `preloadedCode`. DRAWING ↗ button navigates to `/share/[drawing_token]` or home.
+
+**`/share/[token]/page.tsx`** — added `animations` array to `SharedData` type. If drawing has any live animations, renders a fixed top-right "ANIMATIONS" section with links to `/share/animation/[token]`.
+
+### SQL migration to run
+```sql
+CREATE TABLE animations (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  drawing_id    UUID REFERENCES drawings(id) ON DELETE CASCADE,
+  animation_code    TEXT NOT NULL,
+  animation_prompt  TEXT NOT NULL,
+  preview_image     TEXT,
+  canvas_width      INTEGER,
+  canvas_height     INTEGER,
+  share_token       TEXT UNIQUE NOT NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at        TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX animations_share_token_idx ON animations(share_token);
+CREATE INDEX animations_drawing_id_idx  ON animations(drawing_id);
+```
+
+### Design decisions
+- `drawings` table unchanged — existing share links with `animation_code` still work via `initialAnimationCode` prop (legacy auto-play)
+- Animation viewer is self-contained: `preview_image` stored so animation plays even if drawing expires
+- `ensureDrawingSaved` is idempotent so sharing an animation from an unsaved canvas creates the drawing first transparently
+- Animation share overlay lives inside `AnimateOverlay` (not DrawingCanvas) so it stays visually close to where the user clicked SHARE
+
+### Files affected
+- `src/lib/animations.ts` (new)
+- `src/lib/drawings.ts`
+- `src/app/api/animations/route.ts` (new)
+- `src/app/api/animations/[token]/route.ts` (new)
+- `src/app/api/drawings/[token]/route.ts`
+- `src/components/canvas/AnimateOverlay.tsx`
+- `src/components/canvas/DrawingCanvas.tsx`
+- `src/components/canvas/ShareModal.tsx`
+- `src/app/share/animation/[token]/page.tsx` (new)
+- `src/app/share/[token]/page.tsx`
+
 ## feat: cycling loading messages + linear progress bar in AnimateOverlay
 **Date:** 2026-02-25
 **Commit:** 247967d
