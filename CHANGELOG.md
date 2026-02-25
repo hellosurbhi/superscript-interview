@@ -19,6 +19,37 @@ Created `BUGS.md` to track 3 findings from the 2026-02-25 QA session:
 
 ---
 
+## fix: add supabase env validation + fix APP_URL fallbacks for production
+**Date:** 2026-02-25
+**Commit:** 10adfd7
+
+### What changed
+**src/lib/supabase-server.ts:**
+- Added explicit env var validation before `createClient()` — logs `NEXT_PUBLIC_SUPABASE_URL` and whether `SUPABASE_SERVICE_ROLE_KEY` is present on every cold start
+- Throws a clear `Error` if either is missing, making the failure a visible 500 in Vercel Function logs instead of a silent broken client that returns `null` on every query (which then masquerades as "drawing not found" 404s in the share pages)
+
+**src/app/api/drawings/route.ts:**
+- Fixed wrong fallback `APP_URL` from `'https://surbhidraw.vercel.app'` to `'https://superscript-interview.vercel.app'` (the actual Vercel project URL)
+- Added diagnostic `console.log` for `APP_URL` and `SUPABASE_URL` at handler entry
+
+**src/app/api/animations/route.ts:**
+- Fixed completely broken fallback `APP_URL` from `'http://localhost:3000'` to `'https://superscript-interview.vercel.app'` — animation share URLs were pointing to localhost in production when `NEXT_PUBLIC_APP_URL` wasn't set
+
+### Why
+Share links were returning 404 in production but working locally. Root causes: (1) `SUPABASE_SERVICE_ROLE_KEY` not being set in Vercel env silently caused all Supabase queries to fail, making `getDrawing()` return null → API returning 404 → share page showing "expired" state. (2) Animation share URLs were generated with `http://localhost:3000` as the base in production, making them completely broken. (3) The fallback for drawing share URLs used a wrong domain (`surbhidraw.vercel.app` instead of `superscript-interview.vercel.app`).
+
+### After deploying
+Visit `https://superscript-interview.vercel.app/api/drawings` in browser:
+- **405 Method Not Allowed** → routes are live, routing works ✓
+- **500** → Supabase env vars missing in Vercel dashboard → add `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_APP_URL` in Vercel Project Settings → Environment Variables
+
+### Files affected
+- `src/lib/supabase-server.ts`
+- `src/app/api/drawings/route.ts`
+- `src/app/api/animations/route.ts`
+
+---
+
 ## fix: sort sessions chronologically by startTime after building
 **Date:** 2026-02-25
 **Commit:** f957484
