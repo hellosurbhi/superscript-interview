@@ -13,13 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SuprScript — Draw. Paint. Create.",
+  title: "SurbhiDraw — Draw. Paint. Create.",
   description:
     "A fluid mobile-first art tool. Draw, paint, build vectors, and drag them. MS Paint, but 2026.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SuprScript",
+    title: "SurbhiDraw",
   },
 };
 
